@@ -4,4 +4,4 @@ Links zu den HTML Datein:
 https://luishofmann.github.io/Firebase-Anzeige/Sender.html
 https://luishofmann.github.io/Firebase-Anzeige/Empfaenger.html
 
-Bilder benennen mit slide-1, slide-2... bzw. logo
+Bilder funktionieren nur lokal - dafür benennen mit slide-1, slide-2... bzw. logo
