@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Info-Eingabe</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <h2>Information eingeben</h2>
+  <textarea id="info" rows="5" cols="50"></textarea><br>
+  <button onclick="updateInfo()">Aktualisieren</button>
+
+  <script>
+    const firebaseConfig = {
+  apiKey: "AIzaSyBVoEpZHVOqJKI4FOhedx7gWxkfefHjf0g",
+  authDomain: "testseite-turnier.firebaseapp.com",
+  databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "testseite-turnier",
+  storageBucket: "testseite-turnier.firebasestorage.app",
+  messagingSenderId: "1038700024579",
+  appId: "1:1038700024579:web:f0289dd1c7506f63f5cf36"
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function updateInfo() {
+      const text = document.getElementById("info").value;
+      db.ref("anzeige").set({ text });
+    }
+  </script>
+</body>
+</html>

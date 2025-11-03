@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live-Anzeige</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-size: 2em; text-align: center; padding: 50px; }
+  </style>
+</head>
+<body>
+  <div id="anzeige">Warte auf Inhalt...</div>
+
+  <script>
+    const firebaseConfig = {
+  apiKey: "AIzaSyBVoEpZHVOqJKI4FOhedx7gWxkfefHjf0g",
+  authDomain: "testseite-turnier.firebaseapp.com",
+  databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "testseite-turnier",
+  storageBucket: "testseite-turnier.firebasestorage.app",
+  messagingSenderId: "1038700024579",
+  appId: "1:1038700024579:web:f0289dd1c7506f63f5cf36"
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    db.ref("anzeige").on("value", (snapshot) => {
+      const data = snapshot.val();
+      document.getElementById("anzeige").innerText = data.text;
+    });
+  </script>
+</body>
+</html>
