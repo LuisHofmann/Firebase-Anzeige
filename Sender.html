@@ -2,64 +2,144 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Turniersteuerung</title>
+  <title>Turniersteuerung (3 Runden + Weiterrutschen)</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
   <style>
     body {
       font-family: sans-serif;
       background: #f4f4f4;
       padding: 2em;
-      max-width: 600px;
+      max-width: 1800px;
       margin: auto;
     }
-    h1 {
-      text-align: center;
+    h1, h2 { text-align: center; }
+    label { display: block; margin-top: 0.7em; font-weight: bold; }
+    textarea, input, select { width: 100%; padding: 0.5em; margin-top: 0.3em; }
+    .runden-container { display: flex; justify-content: space-between; gap: 1.5em; margin-bottom: 2em; }
+    .runde-block {
+      background: #fff; flex: 1; padding: 1.5em; border-radius: 1em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    label {
-      display: block;
-      margin-top: 1em;
-      font-weight: bold;
+    .button-group { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 1em; }
+    button { padding: 0.7em 1.2em; font-size: 1em; flex: 1; cursor: pointer; }
+    #status { margin-top: 1em; padding: 0.5em; background: #e0e0e0; border: 1px solid #ccc; font-size: 1em; text-align: center; }
+    .tausch-button {
+      display: block; margin: 0 auto 2em auto; padding: 1em 2em; font-size: 1.2em;
+      background: #0078d4; color: #fff; border: none; border-radius: 0.5em; cursor: pointer;
     }
-    textarea, input, select {
-      width: 100%;
-      padding: 0.5em;
-      margin-top: 0.3em;
-    }
-    .button-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5em;
-      margin-top: 1em;
-    }
-    button {
-      padding: 0.7em;
-      font-size: 1em;
+    .tausch-button:hover { background: #005fa3; }
+
+    /* Hilfs-Layout für Zusatzblöcke */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5em; margin: 1.5em 0 2em; }
+    .card {
+      background: #fff; padding: 1.2em; border-radius: 1em; box-shadow: 0 0 10px rgba(0,0,0,0.08);
     }
   </style>
 </head>
 <body>
   <h1>Turniersteuerung</h1>
 
-  <label for="runde">Rundenname</label>
-  <input id="runde" placeholder="z. B. Sichtungsrunde 1" />
-
-  <label for="paare">Startnummern & Namen (eine Zeile pro Paar)</label>
-  <textarea id="paare" rows="6" placeholder="Nummern und Paare hier eingeben"></textarea>
-
-  <label for="hinweis">Hinweistext (optional)</label>
-  <input id="hinweis" placeholder="z. B. Aufstiege, Bekanntmachungen" />
-
-  <div class="button-group">
-    <button onclick="speichern()">💾 Runde speichern</button>
-    <button onclick="anzeigen()">📢 Runde anzeigen</button>
-    <button onclick="loeschen()">🗑️ Runde löschen</button>
+  <!-- Turniertitel -->
+  <div class="card">
+    <h2>Turniertitel</h2>
+    <label for="turnierTitel">Überschrift oben auf der Anzeige</label>
+    <input id="turnierTitel" placeholder="z. B. Landesmeisterschaft 2025" />
+    <div class="button-group">
+      <button onclick="titelAnzeigen()">Titel anzeigen</button>
+      <button onclick="titelLoeschen()">Titel löschen</button>
+      <button onclick="titelLaden()">Aktuellen Titel laden</button>
+    </div>
   </div>
 
-  <label for="rundeSelect">Gespeicherte Runden</label>
-  <select id="rundeSelect" onchange="laden()">
-    <option value="">-- Runde auswählen --</option>
-  </select>
+  <!-- Slideshow-Steuerung -->
+  <div class="card">
+    <h2>Slideshow</h2>
+    <label for="slideshowInterval">Wechselzeit (Sekunden)</label>
+    <input id="slideshowInterval" type="number" min="3" max="120" step="1" placeholder="z. B. 10" />
+    <div class="button-group">
+      <button onclick="slideshowSpeichern()">Wechselzeit speichern</button>
+      <button onclick="slideshowLaden()">Aktuelle Wechselzeit laden</button>
+    </div>
+  </div>
+
+  <div class="runden-container">
+    <!-- Laufende Runde -->
+    <div class="runde-block" id="aktuell">
+      <h2>Laufende Runde</h2>
+      <label for="rundeAktuell">Rundenname</label>
+      <input id="rundeAktuell" placeholder="" />
+      <label for="paareAktuell">Startnummern & Namen</label>
+      <textarea id="paareAktuell" rows="6"></textarea>
+      <label for="hinweisAktuell">Hinweistext</label>
+      <input id="hinweisAktuell" placeholder="z. B. Aufstiege" />
+      <div class="button-group">
+        <button onclick="speichern('aktuell')">Runde speichern</button>
+        <button onclick="anzeigen('aktuell')">Als laufende Runde anzeigen</button>
+        <button onclick="loeschen('aktuell')">Runde löschen</button>
+      </div>
+      <label for="rundeSelectAktuell">Gespeicherte Runden</label>
+      <select id="rundeSelectAktuell" onchange="laden('aktuell')">
+        <option value="">-- Runde auswählen --</option>
+      </select>
+    </div>
+
+    <!-- Nächste Runde -->
+    <div class="runde-block" id="naechste">
+      <h2>Nächste Runde</h2>
+      <label for="rundeNaechste">Rundenname</label>
+      <input id="rundeNaechste" placeholder="" />
+      <label for="paareNaechste">Startnummern & Namen</label>
+      <textarea id="paareNaechste" rows="6"></textarea>
+      <label for="hinweisNaechste">Hinweistext</label>
+      <input id="hinweisNaechste" placeholder="z. B. in zwei Gruppen" />
+      <div class="button-group">
+        <button onclick="speichern('naechste')">Runde speichern</button>
+        <button onclick="anzeigen('naechste')">Als nächste Runde anzeigen</button>
+        <button onclick="loeschen('naechste')">Runde löschen</button>
+      </div>
+      <label for="rundeSelectNaechste">Gespeicherte Runden</label>
+      <select id="rundeSelectNaechste" onchange="laden('naechste')">
+        <option value="">-- Runde auswählen --</option>
+      </select>
+    </div>
+
+    <!-- Übernächste Runde -->
+    <div class="runde-block" id="uebernaechste">
+      <h2>Übernächste Runde</h2>
+      <label for="rundeUebernaechste">Rundenname</label>
+      <input id="rundeUebernaechste" placeholder="" />
+      <label for="paareUebernaechste">Startnummern & Namen</label>
+      <textarea id="paareUebernaechste" rows="6"></textarea>
+      <label for="hinweisUebernaechste">Hinweistext</label>
+      <input id="hinweisUebernaechste" placeholder="z. B. Runden geschachtelt" />
+      <div class="button-group">
+        <button onclick="speichern('uebernaechste')">Runde speichern</button>
+        <button onclick="anzeigen('uebernaechste')">Übernächste Runde anzeigen</button>
+        <button onclick="loeschen('uebernaechste')">Runde löschen</button>
+      </div>
+      <label for="rundeSelectUebernaechste">Gespeicherte Runden</label>
+      <select id="rundeSelectUebernaechste" onchange="laden('uebernaechste')">
+        <option value="">-- Runde auswählen --</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Weiter­rutschen -->
+  <button class="tausch-button" onclick="weiterrutschen()">Weiter­rutschen (Aktuelle → Nächste → Übernächste)</button>
+
+  <!-- Globale Hinweisanzeige -->
+  <div class="card">
+    <h2>Globaler Hinweis</h2>
+    <input id="globalHinweis" placeholder="z. B. Turnierbeginn verschoben" />
+    <div class="button-group">
+      <button onclick="hinweisAnzeigen()">Hinweis anzeigen</button>
+      <button onclick="hinweisLoeschen()">Hinweis löschen</button>
+    </div>
+  </div>
+
+  <div id="status"></div>
 
   <script>
     const firebaseConfig = {
@@ -75,71 +155,213 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    function speichern() {
-      const runde = document.getElementById("runde").value.trim();
-      const paare = document.getElementById("paare").value.trim().split("\n");
-      const hinweis = document.getElementById("hinweis").value.trim();
-      if (!runde) return alert("Bitte einen Rundenname eingeben.");
-      db.ref("runden/" + runde).set({ runde, paare, hinweis });
-      alert("Runde gespeichert.");
+    function setStatus(text) { document.getElementById("status").innerText = text; }
+    function capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1); }
+
+    // Daten <-> Felder
+    function normalize(data) {
+      return {
+        runde: data?.runde || "",
+        paare: Array.isArray(data?.paare) ? data.paare : [],
+        hinweis: data?.hinweis || ""
+      };
+    }
+    function getFields(typ) {
+      return {
+        runde: document.getElementById("runde" + capitalize(typ)),
+        paare: document.getElementById("paare" + capitalize(typ)),
+        hinweis: document.getElementById("hinweis" + capitalize(typ))
+      };
+    }
+    function setFields(typ, data) {
+      const d = normalize(data);
+      const f = getFields(typ);
+      f.runde.value  = d.runde;
+      f.paare.value  = (d.paare || []).join("\n");
+      f.hinweis.value= d.hinweis;
+    }
+    function readFields(typ) {
+      const f = getFields(typ);
+      const paare = f.paare.value.trim()
+        ? f.paare.value.split("\n").map(s => s.trim()).filter(Boolean)
+        : [];
+      return { runde: f.runde.value.trim(), paare, hinweis: f.hinweis.value.trim() };
+    }
+
+    // Runden CRUD + Anzeige
+    function speichern(typ) {
+      const { runde, paare, hinweis } = readFields(typ);
+      if (!runde) return setStatus("Bitte Rundenname eingeben.");
+      db.ref("runden/" + runde).set({ runde, paare, hinweis })
+        .then(() => setStatus(`Runde "${runde}" gespeichert.`))
+        .catch(err => setStatus("Fehler: " + err.message));
       ladeRunden();
     }
 
-    function anzeigen() {
-      const runde = document.getElementById("runde").value.trim();
-      if (!runde) return alert("Bitte zuerst eine Runde eingeben oder laden.");
-      db.ref("anzeige").set({
-        runde,
-        paare: document.getElementById("paare").value.trim().split("\n"),
-        hinweis: document.getElementById("hinweis").value.trim()
-      });
+    function anzeigen(typ) {
+      const { runde, paare, hinweis } = readFields(typ);
+      if (!runde) return setStatus("Bitte Runde eingeben oder laden.");
+      db.ref("anzeige/" + typ).set({ runde, paare, hinweis })
+        .then(() => setStatus(`"${runde}" wird als ${typ}-Runde angezeigt.`))
+        .catch(err => setStatus("Fehler: " + err.message));
     }
 
-    function loeschen() {
-      const runde = document.getElementById("rundeSelect").value;
-      if (!runde) return alert("Bitte zuerst eine Runde auswählen.");
+    function loeschen(typ) {
+      const select = document.getElementById("rundeSelect" + capitalize(typ));
+      const runde = select.value;
+      if (!runde) return setStatus("Bitte Runde auswählen.");
       if (!confirm(`Soll die Runde "${runde}" wirklich gelöscht werden?`)) return;
       db.ref("runden/" + runde).remove()
-        .then(() => {
-          alert("Runde gelöscht.");
-          ladeRunden();
-          document.getElementById("runde").value = "";
-          document.getElementById("paare").value = "";
-          document.getElementById("hinweis").value = "";
-        })
-        .catch((error) => {
-          alert("Fehler beim Löschen: " + error.message);
-        });
+        .then(() => { setStatus("Runde gelöscht."); ladeRunden(); })
+        .catch(err => setStatus("Fehler: " + err.message));
     }
 
-    function ladeRunden() {
-      db.ref("runden").once("value", (snapshot) => {
-        const select = document.getElementById("rundeSelect");
-        select.innerHTML = '<option value="">-- Runde auswählen --</option>';
-        const daten = snapshot.val();
-        if (daten) {
-          Object.keys(daten).forEach((key) => {
-            const opt = document.createElement("option");
-            opt.value = key;
-            opt.textContent = key;
-            select.appendChild(opt);
-          });
-        }
+    // Globaler Hinweis
+    function hinweisAnzeigen() {
+      const text = document.getElementById("globalHinweis").value.trim();
+      db.ref("hinweis").set({ text }).then(() => setStatus("Globaler Hinweis veröffentlicht."));
+    }
+    function hinweisLoeschen() {
+      if (!confirm("Globalen Hinweis wirklich löschen?")) return;
+      db.ref("hinweis").remove().then(() => {
+        setStatus("Globaler Hinweis gelöscht.");
+        document.getElementById("globalHinweis").value = "";
       });
     }
 
-    function laden() {
-      const runde = document.getElementById("rundeSelect").value;
+    // Turniertitel
+    function titelAnzeigen() {
+      const text = document.getElementById("turnierTitel").value.trim();
+      db.ref("titel").set({ text })
+        .then(() => setStatus("Titel aktualisiert."))
+        .catch(err => setStatus("Fehler beim Titel: " + err.message));
+    }
+    function titelLoeschen() {
+      if (!confirm("Titel wirklich löschen?")) return;
+      db.ref("titel").remove()
+        .then(() => {
+          setStatus("Titel gelöscht.");
+          document.getElementById("turnierTitel").value = "";
+        })
+        .catch(err => setStatus("Fehler beim Löschen des Titels: " + err.message));
+    }
+    async function titelLaden() {
+      const snap = await db.ref("titel").once("value");
+      const v = snap.val();
+      const text = (v && typeof v === "object") ? (v.text || "") : (typeof v === "string" ? v : "");
+      document.getElementById("turnierTitel").value = text || "";
+      setStatus("Titel geladen.");
+    }
+
+    // Slideshow-Steuerung
+    async function slideshowLaden() {
+      const snap = await db.ref("slideshow/intervalMs").once("value");
+      const ms = snap.val();
+      const sec = ms ? Math.round(ms / 1000) : 10;
+      document.getElementById("slideshowInterval").value = sec;
+      setStatus(`Slideshow-Wechselzeit geladen: ${sec} s`);
+    }
+    async function slideshowSpeichern() {
+      const input = document.getElementById("slideshowInterval");
+      let sec = parseInt(input.value, 10);
+      if (isNaN(sec)) sec = 10;
+      sec = Math.max(3, Math.min(120, sec));
+      const ms = sec * 1000;
+      await db.ref("slideshow/intervalMs").set(ms);
+      setStatus(`Slideshow-Wechselzeit gespeichert: ${sec} s`);
+    }
+
+    // Rundenliste laden & Auswahl erhalten
+    function ladeRunden() {
+      const selectIds = ["rundeSelectAktuell","rundeSelectNaechste","rundeSelectUebernaechste"];
+      const previousSelection = {};
+      selectIds.forEach(id => {
+        const el = document.getElementById(id);
+        previousSelection[id] = el ? el.value : "";
+      });
+
+      db.ref("runden").once("value", (snapshot) => {
+        const daten = snapshot.val();
+        const keys = daten ? Object.keys(daten) : [];
+
+        selectIds.forEach(id => {
+          const sel = document.getElementById(id);
+          if (!sel) return;
+
+          sel.innerHTML = '<option value="">-- Runde auswählen --</option>';
+          keys.forEach(r => {
+            const opt = document.createElement("option");
+            opt.value = r;
+            opt.textContent = r;
+            sel.appendChild(opt);
+          });
+
+          const wanted = previousSelection[id];
+          if (wanted && keys.includes(wanted)) {
+            sel.value = wanted;
+          } else if (!keys.includes(wanted)) {
+            sel.value = "";
+          }
+        });
+      });
+    }
+
+    function laden(typ) {
+      const select = document.getElementById("rundeSelect" + capitalize(typ));
+      const runde = select.value;
       if (!runde) return;
       db.ref("runden/" + runde).once("value", (snapshot) => {
-        const data = snapshot.val();
-        document.getElementById("runde").value = data.runde;
-        document.getElementById("paare").value = data.paare.join("\n");
-        document.getElementById("hinweis").value = data.hinweis || "";
+        setFields(typ, snapshot.val());
+        setStatus(`Runde "${runde}" geladen.`);
       });
     }
 
+    function setSelectValue(id, value) {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      if (value && Array.from(sel.options).some(o => o.value === value)) {
+        sel.value = value;
+      } else {
+        sel.value = "";
+      }
+    }
+
+    // Weiterrutschen (atomar) + UI/Dropdowns mitziehen
+    async function weiterrutschen() {
+      try {
+        const snap = await db.ref("anzeige").once("value");
+        const daten = snap.val() || {};
+        const aktuell       = normalize(daten.aktuell || {});
+        const naechste      = normalize(daten.naechste || {});
+        const uebernaechste = normalize(daten.uebernaechste || {});
+
+        // 1) Atomares DB-Update
+        await db.ref().update({
+          "anzeige/aktuell":       naechste,
+          "anzeige/naechste":      uebernaechste,
+          "anzeige/uebernaechste": {}
+        });
+
+        // 2) UI-Felder mitziehen
+        setFields('aktuell', naechste);
+        setFields('naechste', uebernaechste);
+        setFields('uebernaechste', { runde:'', paare:[], hinweis:'' });
+
+        // 3) Dropdowns mitrutschen lassen
+        setSelectValue("rundeSelectAktuell",      naechste.runde || "");
+        setSelectValue("rundeSelectNaechste",     uebernaechste.runde || "");
+        setSelectValue("rundeSelectUebernaechste","");
+
+        setStatus("Runden sind weitergerutscht (atomar, UI & Dropdowns aktualisiert).");
+      } catch (err) {
+        setStatus("Fehler beim Weiterrutschen: " + err.message);
+      }
+    }
+
+    // Initial
     ladeRunden();
+    slideshowLaden();
+    titelLaden();
   </script>
 </body>
 </html>

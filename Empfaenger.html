@@ -3,64 +3,444 @@
 <head>
   <meta charset="UTF-8" />
   <title>Turnieranzeige</title>
+
+  <!-- Firebase v8: nur App + Realtime Database -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
   <style>
-    body {
-      background: #111;
-      color: #fff;
-      font-family: sans-serif;
-      text-align: center;
-      padding: 2em;
+    :root{
+      --bg: #5a5a5a;       /* angenehmes Hellgrau */
+      --fg: #ffffff;       /* Schrift: weiß */
+      --muted: #e5e7eb;    /* Nebeninfos */
+      --box: #6b6b6b;      /* Kartenhintergrund */
+      --shadow: rgba(0,0,0,0.3);
+      --fade: 600ms;       /* Slideshow-Fade */
+      --footer-h: 20vh;    /* Höhe der unteren Leiste */
     }
-    h1 { font-size: 3em; margin-bottom: 0.5em; }
-    h2 { font-size: 2em; margin-bottom: 1em; }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+    }
+
+    /* Gesamtlayout: Header (auto) + Main (flex:1) + Footer (fix) */
+    .page {
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr var(--footer-h);
+    }
+
+   /* ===== HEADER (Überschrift + Uhr) ===== */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 1.5vh 2vw 0.5vh;
+  box-sizing: border-box;
+}
+
+#titel {
+  font-weight: 800;
+  line-height: 1.1;
+  text-shadow: 0 2px 8px var(--shadow);
+  font-size: 4vw;            /* große Turnier-Überschrift */
+  letter-spacing: .01em;
+  min-height: 1.2em;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80vw;
+  margin: 0 auto;
+}
+
+.clock {
+  position: absolute;
+  right: 2vw;
+  font-weight: 700;
+  font-size: 3vw;
+  line-height: 1;
+  text-shadow: 0 2px 8px var(--shadow);
+}
+
+
+    /* ===== MAIN (Runden) ===== */
+    .main {
+      display: flex;
+      flex-direction: column;
+      padding: 1vh 2vw 1vh;
+      box-sizing: border-box;
+    }
+    .runden-container {
+      flex: 1;
+      display: flex;
+      gap: 2vw;
+      align-items: stretch;
+      justify-content: center;
+      min-height: 0;
+    }
+    .runde-box {
+      background: var(--box);
+      border-radius: 1.2rem;
+      padding: 2vh 2vw;
+      width: 48%;
+      box-shadow: 0 0 22px var(--shadow);
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .runde-box h1 {
+      font-size: 2.6vw;
+      margin: 0 0 1vh 0;
+      color: var(--fg);
+      text-shadow: 0 2px 8px var(--shadow);
+    }
+    .runde-box h2 {
+      font-size: 2.2vw;
+      margin: 0 0 1.2vh 0;
+      color: var(--fg);
+      text-shadow: 0 2px 6px var(--shadow);
+    }
     ul {
       list-style: none;
-      font-size: 2em;
+      margin: 0;
       padding: 0;
-      margin: 0 auto;
-      max-width: 800px;
+      font-size: 1.9vw;
+      line-height: 1.3;
+      overflow: auto;
+      flex: 1;
+      border-top: 1px solid rgba(255,255,255,0.15);
+      border-bottom: 1px solid rgba(0,0,0,0.15);
     }
-    li {
-      margin: 0.3em 0;
-      border-bottom: 1px solid #444;
-      padding-bottom: 0.2em;
+    li { padding: .35em 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    li:last-child { border-bottom: none; }
+    p.hinweis {
+      margin: 1vh 0 0 0;
+      font-size: 1.6vw;
+      color: var(--muted);
+      min-height: 1.2em;
     }
-    p {
-      margin-top: 2em;
-      font-size: 1.5em;
-      color: #ccc;
+
+    /* ===== FOOTER-BALKEN (Slideshow | Globaler Hinweis | Logo) ===== */
+    .footer {
+      display: grid;
+      grid-template-columns: 10vw 1fr 10vw;  /* links Slideshow, Mitte Hinweis, rechts Logo */
+      gap: 2vw;
+      align-items: center;
+      padding: 1vh 2vw;
+      box-sizing: border-box;
+      border-top: 2px solid rgba(255,255,255,0.12);
+      background: linear-gradient(0deg, rgba(0,0,0,0.18), rgba(0,0,0,0.10));
+      box-shadow: inset 0 8px 16px rgba(0,0,0,0.15);
+    }
+
+    /* Slideshow fix in Spalte links */
+    .media-slot {
+      position: relative;
+      height: calc(var(--footer-h) - 2vh); /* Abzug Padding oben/unten */
+      width: 100%;
+      border: 2px solid rgba(255,255,255,0.12);
+      border-radius: 1rem;
+      box-shadow: 0 0 12px rgba(0,0,0,0.3);
+      overflow: hidden;
+      user-select: none;
+    }
+    .slides { position: absolute; inset: 0; }
+    .slides img {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      max-height: 100%; max-width: 100%;
+      width: auto; height: auto;
+      object-fit: contain;
+      opacity: 0; transition: opacity var(--fade) ease;
+      filter: drop-shadow(0 6px 18px rgba(0,0,0,0.35));
+      will-change: opacity; backface-visibility: hidden; pointer-events: none;
+    }
+    .slides img.active { opacity: 1; }
+    .slides-placeholder {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      color: var(--muted); font-size: 1.2vw; text-align: center; padding: 0 1rem;
+    }
+    .slides-controls {
+      position: absolute; inset: 0; display: flex;
+      align-items: stretch; justify-content: space-between; pointer-events: none;
+    }
+    .slides-controls > div { width: 18%; pointer-events: auto; cursor: pointer; }
+
+    /* Globaler Hinweis zentriert im Footer */
+    #globalHinweis {
+      text-align: center;
+      font-weight: 700;
+      font-size: 4vw;
+      color: var(--fg);
+      text-shadow: 0 2px 8px var(--shadow);
+      padding: 0 .5rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Logo rechts im Footer */
+    .logo-wrap {
+      height: calc(var(--footer-h) - 2vh);
+      display: grid; place-items: center;
+      border: 2px solid rgba(255,255,255,0.12);
+      border-radius: 1rem;
+      box-shadow: 0 0 12px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    .logo-wrap img {
+      max-height: 100%; max-width: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 6px 18px rgba(0,0,0,0.35));
+      display: none;
+    }
+
+    @media (max-width: 1200px) {
+      #titel { font-size: 5vw; }
+      .clock { font-size: 4vw; }
+      .runde-box h1 { font-size: 3vw; }
+      .runde-box h2 { font-size: 2.6vw; }
+      ul { font-size: 2.3vw; }
+      p.hinweis { font-size: 2vw; }
+      #globalHinweis { font-size: 2.4vw; }
     }
   </style>
 </head>
 <body>
-  <h1 id="runde">Lade Runde…</h1>
-  <h2>Teilnehmende Startnummern:</h2>
-  <ul id="paare"></ul>
-  <p id="hinweis"></p>
+  <div class="page">
+    <!-- HEADER -->
+    <header class="header">
+      <div id="titel">Turnier</div>
+      <div class="clock" id="clock">--:--</div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="main">
+      <div class="runden-container">
+        <div class="runde-box">
+          <h1>Laufende Runde</h1>
+          <h2 id="rundeAktuell">–</h2>
+          <ul id="paareAktuell"></ul>
+          <p class="hinweis" id="hinweisAktuell"></p>
+        </div>
+
+        <div class="runde-box">
+          <h1>Nächste Runde</h1>
+          <h2 id="rundeNaechste">–</h2>
+          <ul id="paareNaechste"></ul>
+          <p class="hinweis" id="hinweisNaechste"></p>
+        </div>
+      </div>
+    </main>
+
+    <!-- FOOTER-BALKEN -->
+    <footer class="footer">
+      <!-- Slideshow links -->
+      <div class="media-slot" id="mediaSlot">
+        <div class="slides" id="slides"></div>
+        <div class="slides-placeholder" id="slidesPlaceholder">
+          Lege Bilder in <code>./slides/</code> oder <code>./sponsoren/</code> – oder nutze eine <code>slides.json</code>.
+        </div>
+        <div class="slides-controls">
+          <div class="left"  id="slidePrev"  aria-label="vorheriges Bild"></div>
+          <div class="right" id="slideNext"  aria-label="nächstes Bild"></div>
+        </div>
+      </div>
+
+      <!-- Globaler Hinweis in der Mitte -->
+      <div id="globalHinweis"></div>
+
+      <!-- Logo rechts -->
+      <div class="logo-wrap">
+        <img id="logoImg" alt="Logo">
+      </div>
+    </footer>
+  </div>
 
   <script>
+    // === Firebase: nur Realtime Database ===
     const firebaseConfig = {
-  apiKey: "AIzaSyBVoEpZHVOqJKI4FOhedx7gWxkfefHjf0g",
-  authDomain: "testseite-turnier.firebaseapp.com",
-  databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "testseite-turnier",
-  storageBucket: "testseite-turnier.firebasestorage.app",
-  messagingSenderId: "1038700024579",
-  appId: "1:1038700024579:web:f0289dd1c7506f63f5cf36"
-};
-
+      apiKey: "AIzaSyBVoEpZHVOqJKI4FOhedx7gWxkfefHjf0g",
+      authDomain: "testseite-turnier.firebaseapp.com",
+      databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "testseite-turnier",
+      storageBucket: "testseite-turnier.firebasestorage.app",
+      messagingSenderId: "1038700024579",
+      appId: "1:1038700024579:web:f0289dd1c7506f63f5cf36"
+    };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    db.ref("anzeige").on("value", (snapshot) => {
-      const data = snapshot.val();
-      if (!data) return;
-      document.getElementById("runde").innerText = data.runde || "Unbenannte Runde";
-      document.getElementById("paare").innerHTML = (data.paare || []).map(p => `<li>${p}</li>`).join("");
-      document.getElementById("hinweis").innerText = data.hinweis || "";
+    // === Titel (vom Sender bearbeitbar) ===
+    db.ref("titel").on("value", (s) => {
+      // Erwartet { text: "…" } – fällt zurück auf direkte Zeichenkette
+      const v = s.val();
+      const text = (v && typeof v === "object") ? (v.text || "") : (typeof v === "string" ? v : "");
+      document.getElementById("titel").innerText = text || "Turnier";
     });
+
+    // === Uhr oben rechts ===
+    function pad2(n){ return n < 10 ? "0"+n : ""+n; }
+    function updateClock() {
+      const now = new Date();
+      const hh = pad2(now.getHours());
+      const mm = pad2(now.getMinutes());
+      document.getElementById("clock").textContent = `${hh}:${mm}`;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // === Live-Datenanzeige Runden ===
+    db.ref("anzeige/aktuell").on("value", (s) => {
+      const d = s.val() || {};
+      document.getElementById("rundeAktuell").innerText = d.runde || "-";
+      document.getElementById("paareAktuell").innerHTML = (d.paare || []).map(p => `<li>${p}</li>`).join("");
+      document.getElementById("hinweisAktuell").innerText = d.hinweis || "";
+    });
+
+    db.ref("anzeige/naechste").on("value", (s) => {
+      const d = s.val() || {};
+      document.getElementById("rundeNaechste").innerText = d.runde || "-";
+      document.getElementById("paareNaechste").innerHTML = (d.paare || []).map(p => `<li>${p}</li>`).join("");
+      document.getElementById("hinweisNaechste").innerText = d.hinweis || "";
+    });
+
+    // === Globaler Hinweis (jetzt im Footer, in der Mitte) ===
+    db.ref("hinweis").on("value", (s) => {
+      const d = s.val();
+      document.getElementById("globalHinweis").innerText = d?.text || "";
+    });
+
+    // === Logo (lokal, optional) ===
+    const LOGO_CANDIDATES = [
+      "logo.png", "logo.webp", "logo.jpg",
+      "logo/logo.png", "logo/logo.webp", "logo/logo.jpg",
+      "logos/logo.png", "logos/logo.webp", "logos/logo.jpg"
+    ];
+    function preload(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(src);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+    async function tryLoadLogo() {
+      const el = document.getElementById("logoImg");
+      for (const path of LOGO_CANDIDATES) {
+        try { el.src = await preload(path); el.style.display = "block"; return; }
+        catch { /* weiter probieren */ }
+      }
+      el.style.display = "none";
+    }
+    tryLoadLogo();
+
+    // === Slideshow (rein lokal) ===
+    let slideIntervalMs = 10000; // Standard 10s, per Sender steuerbar
+    const LOCAL_FOLDERS   = ["slides", "sponsoren", ""];
+    const PROBE_PREFIXES  = ["slide-", "sponsor-"];
+    const PROBE_RANGE     = 40;
+    const EXTENSIONS      = [".jpg",".jpeg",".png",".webp",".gif"];
+
+    const slidesEl = document.getElementById("slides");
+    const placeholderEl = document.getElementById("slidesPlaceholder");
+    const mediaSlotEl = document.getElementById("mediaSlot");
+    const btnPrev = document.getElementById("slidePrev");
+    const btnNext = document.getElementById("slideNext");
+
+    let slideUrls = [];
+    let slideIndex = 0;
+    let timer = null;
+    let paused = false;
+
+    async function loadManifest(name="slides.json") {
+      try {
+        const res = await fetch(name, { cache: "no-store" });
+        if (!res.ok) return null;
+        const arr = await res.json();
+        return Array.isArray(arr) ? arr : null;
+      } catch { return null; }
+    }
+
+    async function loadFromLocalFolders() {
+      const found = [];
+      for (const dir of LOCAL_FOLDERS) {
+        for (const pre of PROBE_PREFIXES) {
+          for (let n = 1; n <= PROBE_RANGE; n++) {
+            for (const ext of EXTENSIONS) {
+              const url = (dir ? `${dir}/` : "") + `${pre}${n}${ext}`;
+              try { await preload(url); found.push(url); } catch {}
+            }
+          }
+        }
+      }
+      return found;
+    }
+
+    function renderSlides(urls) {
+      slidesEl.innerHTML = "";
+      urls.forEach((u, i) => {
+        const img = document.createElement("img");
+        img.src = u;
+        if (i === 0) img.classList.add("active");
+        slidesEl.appendChild(img);
+      });
+      placeholderEl.style.display = urls.length ? "none" : "grid";
+      slideIndex = 0;
+    }
+
+    function show(index) {
+      if (!slideUrls.length) return;
+      const imgs = slidesEl.querySelectorAll("img");
+      imgs.forEach((img, i) => img.classList.toggle("active", i === index));
+      slideIndex = index;
+    }
+
+    function next() { if (!slideUrls.length) return; show((slideIndex + 1) % slideUrls.length); restartTimer(); }
+    function prev() { if (!slideUrls.length) return; show((slideIndex - 1 + slideUrls.length) % slideUrls.length); restartTimer(); }
+
+    function startTimer() {
+      stopTimer();
+      if (!slideUrls.length) return;
+      timer = setInterval(() => { if (!paused) next(); }, slideIntervalMs);
+    }
+    function stopTimer() { if (timer) clearInterval(timer); timer = null; }
+    function restartTimer() { stopTimer(); startTimer(); }
+
+    mediaSlotEl.addEventListener("mouseenter", () => { paused = true; });
+    mediaSlotEl.addEventListener("mouseleave", () => { paused = false; });
+    btnNext.addEventListener("click", next);
+    btnPrev.addEventListener("click", prev);
+    mediaSlotEl.addEventListener("click", next);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight") next();
+      if (e.key === "ArrowLeft")  prev();
+    });
+
+    // Wechselzeit live vom Sender
+    db.ref("slideshow/intervalMs").on("value", (s) => {
+      const v = s.val();
+      if (!v || typeof v !== "number") return;
+      slideIntervalMs = Math.max(3000, Math.min(120000, v));
+      restartTimer();
+    });
+
+    async function initSlides() {
+      let urls = await loadManifest("slides.json");
+      if (!urls) urls = await loadManifest("sponsoren.json");
+      if (!urls || urls.length === 0) urls = await loadFromLocalFolders();
+      slideUrls = (urls || []).filter(Boolean);
+      renderSlides(slideUrls);
+      startTimer();
+    }
+
+    initSlides();
   </script>
 </body>
 </html>
