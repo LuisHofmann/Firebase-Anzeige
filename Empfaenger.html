@@ -1,15 +1,44 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
-  <title>Live-Anzeige</title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <meta charset="UTF-8" />
+  <title>Turnieranzeige</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
-    body { font-size: 2em; text-align: center; padding: 50px; }
+    body {
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      text-align: center;
+      padding: 2em;
+    }
+    h1 { font-size: 3em; margin-bottom: 0.5em; }
+    h2 { font-size: 2em; margin-bottom: 1em; }
+    ul {
+      list-style: none;
+      font-size: 2em;
+      padding: 0;
+      margin: 0 auto;
+      max-width: 800px;
+    }
+    li {
+      margin: 0.3em 0;
+      border-bottom: 1px solid #444;
+      padding-bottom: 0.2em;
+    }
+    p {
+      margin-top: 2em;
+      font-size: 1.5em;
+      color: #ccc;
+    }
   </style>
 </head>
 <body>
-  <div id="anzeige">Warte auf Inhalt...</div>
+  <h1 id="runde">Lade Runde…</h1>
+  <h2>Teilnehmende Startnummern:</h2>
+  <ul id="paare"></ul>
+  <p id="hinweis"></p>
 
   <script>
     const firebaseConfig = {
@@ -27,7 +56,10 @@
 
     db.ref("anzeige").on("value", (snapshot) => {
       const data = snapshot.val();
-      document.getElementById("anzeige").innerText = data.text;
+      if (!data) return;
+      document.getElementById("runde").innerText = data.runde || "Unbenannte Runde";
+      document.getElementById("paare").innerHTML = (data.paare || []).map(p => `<li>${p}</li>`).join("");
+      document.getElementById("hinweis").innerText = data.hinweis || "";
     });
   </script>
 </body>

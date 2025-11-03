@@ -1,36 +1,145 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
-  <title>Info-Eingabe</title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <meta charset="UTF-8" />
+  <title>Turniersteuerung</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f4f4f4;
+      padding: 2em;
+      max-width: 600px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 1em;
+      font-weight: bold;
+    }
+    textarea, input, select {
+      width: 100%;
+      padding: 0.5em;
+      margin-top: 0.3em;
+    }
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5em;
+      margin-top: 1em;
+    }
+    button {
+      padding: 0.7em;
+      font-size: 1em;
+    }
+  </style>
 </head>
 <body>
-  <h2>Information eingeben</h2>
-  <textarea id="info" rows="5" cols="50"></textarea><br>
-  <button onclick="updateInfo()">Aktualisieren</button>
+  <h1>Turniersteuerung</h1>
+
+  <label for="runde">Rundenname</label>
+  <input id="runde" placeholder="z. B. Sichtungsrunde 1" />
+
+  <label for="paare">Startnummern & Namen (eine Zeile pro Paar)</label>
+  <textarea id="paare" rows="6" placeholder="Nummern und Paare hier eingeben"></textarea>
+
+  <label for="hinweis">Hinweistext (optional)</label>
+  <input id="hinweis" placeholder="z. B. Aufstiege, Bekanntmachungen" />
+
+  <div class="button-group">
+    <button onclick="speichern()">💾 Runde speichern</button>
+    <button onclick="anzeigen()">📢 Runde anzeigen</button>
+    <button onclick="loeschen()">🗑️ Runde löschen</button>
+  </div>
+
+  <label for="rundeSelect">Gespeicherte Runden</label>
+  <select id="rundeSelect" onchange="laden()">
+    <option value="">-- Runde auswählen --</option>
+  </select>
 
   <script>
     const firebaseConfig = {
-  apiKey: "AIzaSyBVoEpZHVOqJKI4FOhedx7gWxkfefHjf0g",
-  authDomain: "testseite-turnier.firebaseapp.com",
-  databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "testseite-turnier",
-  storageBucket: "testseite-turnier.firebasestorage.app",
-  messagingSenderId: "1038700024579",
-  appId: "1:1038700024579:web:f0289dd1c7506f63f5cf36"
-};
+      apiKey: "AIzaSyBVoEpZHVOqJKI4FOhedx7gWxkfefHjf0g",
+      authDomain: "testseite-turnier.firebaseapp.com",
+      databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "testseite-turnier",
+      storageBucket: "testseite-turnier.firebasestorage.app",
+      messagingSenderId: "1038700024579",
+      appId: "1:1038700024579:web:f0289dd1c7506f63f5cf36"
+    };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    function updateInfo() {
-      const text = document.getElementById("info").value;
-      db.ref("anzeige").set({ text });
+    function speichern() {
+      const runde = document.getElementById("runde").value.trim();
+      const paare = document.getElementById("paare").value.trim().split("\n");
+      const hinweis = document.getElementById("hinweis").value.trim();
+      if (!runde) return alert("Bitte einen Rundenname eingeben.");
+      db.ref("runden/" + runde).set({ runde, paare, hinweis });
+      alert("Runde gespeichert.");
+      ladeRunden();
     }
+
+    function anzeigen() {
+      const runde = document.getElementById("runde").value.trim();
+      if (!runde) return alert("Bitte zuerst eine Runde eingeben oder laden.");
+      db.ref("anzeige").set({
+        runde,
+        paare: document.getElementById("paare").value.trim().split("\n"),
+        hinweis: document.getElementById("hinweis").value.trim()
+      });
+    }
+
+    function loeschen() {
+      const runde = document.getElementById("rundeSelect").value;
+      if (!runde) return alert("Bitte zuerst eine Runde auswählen.");
+      if (!confirm(`Soll die Runde "${runde}" wirklich gelöscht werden?`)) return;
+      db.ref("runden/" + runde).remove()
+        .then(() => {
+          alert("Runde gelöscht.");
+          ladeRunden();
+          document.getElementById("runde").value = "";
+          document.getElementById("paare").value = "";
+          document.getElementById("hinweis").value = "";
+        })
+        .catch((error) => {
+          alert("Fehler beim Löschen: " + error.message);
+        });
+    }
+
+    function ladeRunden() {
+      db.ref("runden").once("value", (snapshot) => {
+        const select = document.getElementById("rundeSelect");
+        select.innerHTML = '<option value="">-- Runde auswählen --</option>';
+        const daten = snapshot.val();
+        if (daten) {
+          Object.keys(daten).forEach((key) => {
+            const opt = document.createElement("option");
+            opt.value = key;
+            opt.textContent = key;
+            select.appendChild(opt);
+          });
+        }
+      });
+    }
+
+    function laden() {
+      const runde = document.getElementById("rundeSelect").value;
+      if (!runde) return;
+      db.ref("runden/" + runde).once("value", (snapshot) => {
+        const data = snapshot.val();
+        document.getElementById("runde").value = data.runde;
+        document.getElementById("paare").value = data.paare.join("\n");
+        document.getElementById("hinweis").value = data.hinweis || "";
+      });
+    }
+
+    ladeRunden();
   </script>
 </body>
 </html>
-
-
-
