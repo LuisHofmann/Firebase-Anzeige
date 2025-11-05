@@ -2,9 +2,18 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Turniersteuerung (3 Runden + Weiterrutschen)</title>
+  <title>Turniersteuerung (3 Runden + Dateiimport)</title>
+
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+  </script>
 
   <style>
     body {
@@ -14,30 +23,88 @@
       max-width: 1800px;
       margin: auto;
     }
-    h1, h2 { text-align: center; }
-    label { display: block; margin-top: 0.7em; font-weight: bold; }
-    textarea, input, select { width: 100%; padding: 0.5em; margin-top: 0.3em; }
-    .runden-container { display: flex; justify-content: space-between; gap: 1.5em; margin-bottom: 2em; }
+
+    h1, h2 {
+      text-align: center;
+    }
+
+    label {
+      display: block;
+      margin-top: 0.7em;
+      font-weight: bold;
+    }
+
+    textarea, input, select {
+      width: 100%;
+      padding: 0.5em;
+      margin-top: 0.3em;
+    }
+
+    .runden-container {
+      display: flex;
+      justify-content: space-between;
+      gap: 1.5em;
+      margin-bottom: 2em;
+    }
+
     .runde-block {
-      background: #fff; flex: 1; padding: 1.5em; border-radius: 1em;
+      background: #fff;
+      flex: 1;
+      padding: 1.5em;
+      border-radius: 1em;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    .button-group { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 1em; }
-    button { padding: 0.7em 1.2em; font-size: 1em; flex: 1; cursor: pointer; }
-    #status { margin-top: 1em; padding: 0.5em; background: #e0e0e0; border: 1px solid #ccc; font-size: 1em; text-align: center; }
-    .tausch-button {
-      display: block; margin: 0 auto 2em auto; padding: 1em 2em; font-size: 1.2em;
-      background: #0078d4; color: #fff; border: none; border-radius: 0.5em; cursor: pointer;
-    }
-    .tausch-button:hover { background: #005fa3; }
 
-    /* Hilfs-Layout für Zusatzblöcke */
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5em; margin: 1.5em 0 2em; }
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5em;
+      margin-top: 1em;
+    }
+
+    button {
+      padding: 0.7em 1.2em;
+      font-size: 1em;
+      flex: 1;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 1em;
+      padding: 0.5em;
+      background: #e0e0e0;
+      border: 1px solid #ccc;
+      font-size: 1em;
+      text-align: center;
+    }
+
+    .tausch-button {
+      display: block;
+      margin: 0 auto 2em auto;
+      padding: 1em 2em;
+      font-size: 1.2em;
+      background: #0078d4;
+      color: #fff;
+      border: none;
+      border-radius: 0.5em;
+      cursor: pointer;
+    }
+
+    .tausch-button:hover {
+      background: #005fa3;
+    }
+
     .card {
-      background: #fff; padding: 1.2em; border-radius: 1em; box-shadow: 0 0 10px rgba(0,0,0,0.08);
+      background: #fff;
+      padding: 1.2em;
+      border-radius: 1em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.08);
+      margin-bottom: 1.5em;
     }
   </style>
 </head>
+
+
 <body>
   <h1>Turniersteuerung</h1>
 
@@ -46,6 +113,7 @@
     <h2>Turniertitel</h2>
     <label for="turnierTitel">Überschrift oben auf der Anzeige</label>
     <input id="turnierTitel" placeholder="z. B. Landesmeisterschaft 2025" />
+
     <div class="button-group">
       <button onclick="titelAnzeigen()">Titel anzeigen</button>
       <button onclick="titelLoeschen()">Titel löschen</button>
@@ -53,86 +121,133 @@
     </div>
   </div>
 
-  <!-- Slideshow-Steuerung -->
+  <!-- Slideshow -->
   <div class="card">
     <h2>Slideshow</h2>
+
     <label for="slideshowInterval">Wechselzeit (Sekunden)</label>
     <input id="slideshowInterval" type="number" min="3" max="120" step="1" placeholder="z. B. 10" />
+
     <div class="button-group">
       <button onclick="slideshowSpeichern()">Wechselzeit speichern</button>
       <button onclick="slideshowLaden()">Aktuelle Wechselzeit laden</button>
     </div>
   </div>
 
+  <!-- PDF Import -->
+  <div class="card">
+    <h2>Runde aus PDF importieren</h2>
+
+    <label for="importFile">PDF-Datei wählen (.pdf)</label>
+    <input type="file" id="importFile" accept=".pdf" multiple />
+
+
+    <label for="importZiel">Zielrunde</label>
+    <select id="importZiel">
+      <option value="aktuell">Laufende Runde</option>
+      <option value="naechste">Nächste Runde</option>
+      <option value="uebernaechste">Übernächste Runde</option>
+    </select>
+
+    <div class="button-group">
+  <button onclick="importiereRundePDF()">PDF importieren</button>
+  <button onclick="importiereRundePDF_undSpeichern()">PDF importieren & speichern</button>
+  <button onclick="importiereMehrereRundenPDF()">Mehrere PDFs importieren & speichern</button>
+</div>
+
+
+  </div>
+
+  <!-- Rundenbereiche -->
   <div class="runden-container">
-    <!-- Laufende Runde -->
+
+    <!-- Aktuell -->
     <div class="runde-block" id="aktuell">
       <h2>Laufende Runde</h2>
       <label for="rundeAktuell">Rundenname</label>
-      <input id="rundeAktuell" placeholder="" />
+      <input id="rundeAktuell" />
+
       <label for="paareAktuell">Startnummern & Namen</label>
       <textarea id="paareAktuell" rows="6"></textarea>
+
       <label for="hinweisAktuell">Hinweistext</label>
       <input id="hinweisAktuell" placeholder="z. B. Aufstiege" />
+
       <div class="button-group">
         <button onclick="speichern('aktuell')">Runde speichern</button>
         <button onclick="anzeigen('aktuell')">Als laufende Runde anzeigen</button>
-        <button onclick="loeschen('aktuell')">Runde löschen</button>
+        <button onclick="loeschenMehrere('aktuell')">Ausgewählte Runden löschen</button>
       </div>
+
       <label for="rundeSelectAktuell">Gespeicherte Runden</label>
-      <select id="rundeSelectAktuell" onchange="laden('aktuell')">
+      <select id="rundeSelectAktuell" multiple size="6" onchange="laden('aktuell')">
+
         <option value="">-- Runde auswählen --</option>
       </select>
     </div>
 
-    <!-- Nächste Runde -->
+    <!-- Nächste -->
     <div class="runde-block" id="naechste">
       <h2>Nächste Runde</h2>
       <label for="rundeNaechste">Rundenname</label>
-      <input id="rundeNaechste" placeholder="" />
+      <input id="rundeNaechste" />
+
       <label for="paareNaechste">Startnummern & Namen</label>
       <textarea id="paareNaechste" rows="6"></textarea>
+
       <label for="hinweisNaechste">Hinweistext</label>
       <input id="hinweisNaechste" placeholder="z. B. in zwei Gruppen" />
+
       <div class="button-group">
         <button onclick="speichern('naechste')">Runde speichern</button>
         <button onclick="anzeigen('naechste')">Als nächste Runde anzeigen</button>
-        <button onclick="loeschen('naechste')">Runde löschen</button>
+        <button onclick="loeschenMehrere('naechste')">Ausgewählte Runden löschen</button>
       </div>
+
       <label for="rundeSelectNaechste">Gespeicherte Runden</label>
-      <select id="rundeSelectNaechste" onchange="laden('naechste')">
+      <select id="rundeSelectNaechste" multiple size="6" onchange="laden('naechste')">
         <option value="">-- Runde auswählen --</option>
       </select>
     </div>
 
-    <!-- Übernächste Runde -->
+    <!-- Übernächste -->
     <div class="runde-block" id="uebernaechste">
       <h2>Übernächste Runde</h2>
+
       <label for="rundeUebernaechste">Rundenname</label>
-      <input id="rundeUebernaechste" placeholder="" />
+      <input id="rundeUebernaechste" />
+
       <label for="paareUebernaechste">Startnummern & Namen</label>
       <textarea id="paareUebernaechste" rows="6"></textarea>
+
       <label for="hinweisUebernaechste">Hinweistext</label>
       <input id="hinweisUebernaechste" placeholder="z. B. Runden geschachtelt" />
+
       <div class="button-group">
         <button onclick="speichern('uebernaechste')">Runde speichern</button>
         <button onclick="anzeigen('uebernaechste')">Übernächste Runde anzeigen</button>
-        <button onclick="loeschen('uebernaechste')">Runde löschen</button>
+        <button onclick="loeschenMehrere('uebernaechste')">Ausgewählte Runden löschen</button>
       </div>
+
       <label for="rundeSelectUebernaechste">Gespeicherte Runden</label>
-      <select id="rundeSelectUebernaechste" onchange="laden('uebernaechste')">
+      <select id="rundeSelectUebernaechste" multiple size="6" onchange="laden('uebernaechste')">
         <option value="">-- Runde auswählen --</option>
       </select>
     </div>
+
   </div>
 
   <!-- Weiter­rutschen -->
-  <button class="tausch-button" onclick="weiterrutschen()">Weiter­rutschen (Aktuelle → Nächste → Übernächste)</button>
+  <button class="tausch-button" onclick="weiterrutschen()">
+    Weiter­rutschen (Aktuelle → Nächste → Übernächste)
+  </button>
 
-  <!-- Globale Hinweisanzeige -->
+  <!-- Globaler Hinweis -->
   <div class="card">
     <h2>Globaler Hinweis</h2>
+
     <input id="globalHinweis" placeholder="z. B. Turnierbeginn verschoben" />
+
     <div class="button-group">
       <button onclick="hinweisAnzeigen()">Hinweis anzeigen</button>
       <button onclick="hinweisLoeschen()">Hinweis löschen</button>
@@ -141,227 +256,609 @@
 
   <div id="status"></div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBVoEpZHVOqJKI4FOhedx7gWxkfefHjf0g",
-      authDomain: "testseite-turnier.firebaseapp.com",
-      databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "testseite-turnier",
-      storageBucket: "testseite-turnier.firebasestorage.app",
-      messagingSenderId: "1038700024579",
-      appId: "1:1038700024579:web:f0289dd1c7506f63f5cf36"
-    };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
 
-    function setStatus(text) { document.getElementById("status").innerText = text; }
-    function capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1); }
 
-    // Daten <-> Felder
-    function normalize(data) {
-      return {
-        runde: data?.runde || "",
-        paare: Array.isArray(data?.paare) ? data.paare : [],
-        hinweis: data?.hinweis || ""
-      };
-    }
-    function getFields(typ) {
-      return {
-        runde: document.getElementById("runde" + capitalize(typ)),
-        paare: document.getElementById("paare" + capitalize(typ)),
-        hinweis: document.getElementById("hinweis" + capitalize(typ))
-      };
-    }
-    function setFields(typ, data) {
-      const d = normalize(data);
-      const f = getFields(typ);
-      f.runde.value  = d.runde;
-      f.paare.value  = (d.paare || []).join("\n");
-      f.hinweis.value= d.hinweis;
-    }
-    function readFields(typ) {
-      const f = getFields(typ);
-      const paare = f.paare.value.trim()
-        ? f.paare.value.split("\n").map(s => s.trim()).filter(Boolean)
-        : [];
-      return { runde: f.runde.value.trim(), paare, hinweis: f.hinweis.value.trim() };
-    }
 
-    // Runden CRUD + Anzeige
-    function speichern(typ) {
-      const { runde, paare, hinweis } = readFields(typ);
-      if (!runde) return setStatus("Bitte Rundenname eingeben.");
-      db.ref("runden/" + runde).set({ runde, paare, hinweis })
-        .then(() => setStatus(`Runde "${runde}" gespeichert.`))
-        .catch(err => setStatus("Fehler: " + err.message));
+
+
+<script>
+
+/* ===========================================================
+   Firebase Setup
+   =========================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBVoEpZHVOqJKI4FOhedx7gWxkfefHjf0g",
+  authDomain: "testseite-turnier.firebaseapp.com",
+  databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "testseite-turnier",
+  storageBucket: "testseite-turnier.firebasestorage.app",
+  messagingSenderId: "1038700024579",
+  appId: "1:1038700024579:web:f0289dd1c7506f63f5cf36"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+
+/* ===========================================================
+   Hilfsfunktionen (UI + Format)
+   =========================================================== */
+function setStatus(text) {
+  document.getElementById("status").innerText = text;
+}
+
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function normalize(data) {
+  return {
+    runde: data?.runde || "",
+    paare: Array.isArray(data?.paare) ? data.paare : [],
+    hinweis: data?.hinweis || ""
+  };
+}
+
+function getFields(typ) {
+  return {
+    runde: document.getElementById("runde" + capitalize(typ)),
+    paare: document.getElementById("paare" + capitalize(typ)),
+    hinweis: document.getElementById("hinweis" + capitalize(typ))
+  };
+}
+
+function setFields(typ, data) {
+  const d = normalize(data);
+  const f = getFields(typ);
+
+  f.runde.value = d.runde;
+  f.paare.value = (d.paare || []).join("\n");
+  f.hinweis.value = d.hinweis;
+}
+
+function readFields(typ) {
+  const f = getFields(typ);
+  const paare = f.paare.value.trim()
+    ? f.paare.value.split("\n").map(s => s.trim()).filter(Boolean)
+    : [];
+
+  return {
+    runde: f.runde.value.trim(),
+    paare,
+    hinweis: f.hinweis.value.trim()
+  };
+}
+
+
+/* ===========================================================
+   PDF Import
+   =========================================================== */
+
+
+
+async function importiereRundePDF() {
+  const fileInput = document.getElementById("importFile");
+  const ziel = document.getElementById("importZiel").value;
+
+  if (!fileInput.files.length) {
+    return setStatus("Bitte eine PDF-Datei auswählen.");
+  }
+
+  const file = fileInput.files[0];
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  let flat = "";
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    flat += content.items.map(it => it.str).join(" ") + "\n";
+  }
+
+  flat = flat.replace(/\s+/g, " ").trim();
+
+  /* ===========================================================
+     Startklasse / Gruppe / Art bestimmen
+     =========================================================== */
+  const klasseMatch = flat.match(/\b(Sichtung|Vorrunde|Endrunde|Finale|Zwischenrunde|M-Reihe)\b/i);
+  const startklasse = klasseMatch ? klasseMatch[1] : "";
+
+// Paartanz-Gruppen (H4/5 etc)
+let gruppeMatch = flat.match(/\b[HJ]\d(?:[\/-]\d)?\b/i);
+
+// Solotanz-Gruppen (Solos S4/5 etc)
+if (!gruppeMatch) gruppeMatch = flat.match(/Solos?\s+[A-Z]\d(?:[\/-]\d)?/i);
+
+// RST-Breitensport-Gruppen (RS4/5 etc)
+if (!gruppeMatch) gruppeMatch = flat.match(/\bRS\d(?:[\/-]\d)?\b/i);
+
+// DAT / Sichtung / Leistungsgruppen (S3-5 etc)
+if (!gruppeMatch) gruppeMatch = flat.match(/\bS\d(?:[\/-]\d)?\b/i);
+
+const startgruppe = gruppeMatch ? gruppeMatch[0] : "";
+
+
+// ===== Startgruppen-Bezeichnungen schön darstellen =====
+let anzeigenGruppe = startgruppe;
+
+// Rising Star (RS…)
+anzeigenGruppe = anzeigenGruppe.replace(/^RS/i, "Rising Star ");
+
+// HobbyLeague (H…)
+anzeigenGruppe = anzeigenGruppe.replace(/^H/i, "HobbyLeague ");
+
+// SupaLeague (S…), aber nur wenn nicht Solos
+if (!/Solos/i.test(anzeigenGruppe)) {
+  anzeigenGruppe = anzeigenGruppe.replace(/^S/i, "SupaLeague ");
+}
+
+// Solos SupaLeague (Solos S…)
+anzeigenGruppe = anzeigenGruppe.replace(/Solos?\s+S/i, "Solos SupaLeague ");
+
+
+  const artMatch = flat.match(/\b(Standard|Latein|Discofox)\b/i);
+  const turnierart = artMatch ? artMatch[1] : "";
+
+  if (!startklasse || !startgruppe || !turnierart) {
+    return setStatus("Konnte Startklasse/Gruppe/Turnierart nicht eindeutig bestimmen.");
+  }
+
+const rundenname = `${startklasse} ${anzeigenGruppe} ${turnierart}`.trim();
+
+
+  let paareText = "";
+  let paarLines = [];
+
+  /* ===========================================================
+     Gruppentanz-Runden (z. B. 1. Gruppe (5) ...)
+     =========================================================== */
+  const groupRegex = /(\d)\.\s*Gruppe:?\s*\(\d+\)\s*([0-9 ]+?)(?=\s*\d\.\s*Gruppe|$)/gi;
+  let groupMatch;
+  let groupLines = [];
+
+  while ((groupMatch = groupRegex.exec(flat)) !== null) {
+    const groupNum = groupMatch[1];
+    const numbers = groupMatch[2]
+      .trim()
+      .split(/\s+/)
+      .filter(n => /^\d+$/.test(n))
+      .join(" ");
+
+    groupLines.push(`${groupNum}. Gruppe: ${numbers}`);
+  }
+
+  if (groupLines.length > 0) {
+    paareText = groupLines.join("\n");
+    setFields(ziel, { runde: rundenname, paare: paareText.split("\n"), hinweis: "" });
+    return setStatus(`Import erfolgreich (Gruppen erkannt): ${rundenname}`);
+  }
+
+  /* ===========================================================
+     AB HIER: NUR TEILNEHMERBEREICH VERWENDEN
+     → Verhindert Kopfzeilen wie:
+       "3 M-Reihe Latein Veranstalter"
+       "TopTurnier Software xyz"
+     =========================================================== */
+  const teilStart = flat.match(/Nr\.\s*(Solo|Paar)\s*:/i);
+  if (teilStart) {
+    flat = flat.slice(teilStart.index);
+  }
+
+  /* ===========================================================
+     Paarrunden
+     =========================================================== */
+  const paarRegex = /(\d+)\s+([A-ZÄÖÜ][\wäöüß\-']+(?:\s+[A-ZÄÖÜ][\wäöüß\-']+)*)\s*\/\s*([A-ZÄÖÜ][\wäöüß\-']+(?:\s+[A-ZÄÖÜ][\wäöüß\-']+)*)/g;
+  let match;
+
+ while ((match = paarRegex.exec(flat)) !== null) {
+  const nr = match[1];
+  let nameL = match[2].trim();
+  let nameR = match[3].trim();
+
+  // Vereins-/Schul-Namen entfernen (wie bei Solo)
+  const clubWords = [
+    "TSC","TSV","TSA","TG","TC","Club","Tanzschule",
+    "Tanzwelt","Tanzhaus","Tanzstudio","Tanzsportzentrum",
+    "Formation","Dance","Ballettschule","Sportschule",
+    "Akademie","Center","e\\.V\\.?","GmbH","GbR","Let's","Move", "Motsi", "Tanzsport"
+  ];
+  const CLEAN_CLUB = new RegExp(`\\b(?:${clubWords.join("|")})(?:\\s+[A-Za-zäöüß\\-']+)*$`, "i");
+
+  nameL = nameL.replace(CLEAN_CLUB, "").trim();
+  nameR = nameR.replace(CLEAN_CLUB, "").trim();
+
+  paarLines.push(`${nr} ${nameL} / ${nameR}`);
+}
+
+
+  /* ===========================================================
+     Solorunden
+     =========================================================== */
+  if (!paarLines.length) {
+    const soloRegex = /(\d+)\s+([A-ZÄÖÜ][\wäöüß\-']+(?:\s+[A-ZÄÖÜ][\wäöüß\-']+)+)/g;
+
+    const clubWords = [
+      "TSC","TSV","TSA","TG","TC","Club","Tanzschule",
+      "Tanzwelt","Tanzhaus","Tanzstudio","Tanzsportzentrum",
+      "Formation","Dance","Ballettschule","Sportschule",
+      "Akademie","Center","e\\.V\\.?","GmbH","GbR","Let's","Move", "Motsi", "Tanzsport"
+    ];
+
+    const CLEAN_CLUB = new RegExp(`\\b(?:${clubWords.join("|")})(?:\\s+[\\wäöüß\\-']+)*$`, "i");
+
+    while ((match = soloRegex.exec(flat)) !== null) {
+      const nr = match[1];
+      let name = match[2].trim();
+      name = name.replace(CLEAN_CLUB, "").trim(); // Vereinsname entfernen
+      paarLines.push(`${nr} ${name}`);
+    }
+  }
+
+  /* ===========================================================
+     Nur echte Teilnehmer behalten
+     =========================================================== */
+  const soloLine = /^\d+\s+[A-ZÄÖÜ][a-zäöüß]+(\s+[A-ZÄÖÜ][a-zäöüß]+)+$/;
+  const pairLine = /^\d+\s+[A-ZÄÖÜ].+\/.+$/;
+
+  paarLines = paarLines
+    .map(l => l.trim())
+    .filter(l => soloLine.test(l) || pairLine.test(l));
+
+  paarLines = [...new Set(paarLines)];
+  paarLines.sort((a, b) => parseInt(a) - parseInt(b));
+
+  if (!paarLines.length) {
+    return setStatus("Konnte keine Teilnehmer erkennen.");
+  }
+
+  paareText = paarLines.join("\n");
+
+  setFields(ziel, { runde: rundenname, paare: paareText.split("\n"), hinweis: "" });
+  setStatus(`Import erfolgreich: ${rundenname}`);
+}
+
+
+
+
+
+/* ===========================================================
+   PDF Import + direktes Speichern
+   =========================================================== */
+async function importiereRundePDF_undSpeichern() {
+
+  // Erst normal importieren
+  await importiereRundePDF();
+
+  // Dann Ziel ermitteln
+  const ziel = document.getElementById("importZiel").value;
+
+  // Felder aus UI lesen
+  const { runde, paare, hinweis } = readFields(ziel);
+  if (!runde) return setStatus("Konnte nicht speichern: Kein Rundenname erkannt.");
+
+  // Firebase-Key erstellen
+  const key = runde.replace(/[.#$/\[\]]/g, "-");
+
+  // Speichern in Firebase
+  db.ref("runden/" + key).set({ runde, paare, hinweis })
+    .then(() => {
+      setStatus(`Import + Speichern erfolgreich: "${runde}"`);
       ladeRunden();
-    }
+      setSelectValue("rundeSelect" + capitalize(ziel), key);
+    })
+    .catch(err => setStatus("Fehler beim automatischen Speichern: " + err.message));
+}
 
-    function anzeigen(typ) {
-      const { runde, paare, hinweis } = readFields(typ);
-      if (!runde) return setStatus("Bitte Runde eingeben oder laden.");
-      db.ref("anzeige/" + typ).set({ runde, paare, hinweis })
-        .then(() => setStatus(`"${runde}" wird als ${typ}-Runde angezeigt.`))
-        .catch(err => setStatus("Fehler: " + err.message));
-    }
 
-    function loeschen(typ) {
-      const select = document.getElementById("rundeSelect" + capitalize(typ));
-      const runde = select.value;
-      if (!runde) return setStatus("Bitte Runde auswählen.");
-      if (!confirm(`Soll die Runde "${runde}" wirklich gelöscht werden?`)) return;
-      db.ref("runden/" + runde).remove()
-        .then(() => { setStatus("Runde gelöscht."); ladeRunden(); })
-        .catch(err => setStatus("Fehler: " + err.message));
-    }
 
-    // Globaler Hinweis
-    function hinweisAnzeigen() {
-      const text = document.getElementById("globalHinweis").value.trim();
-      db.ref("hinweis").set({ text }).then(() => setStatus("Globaler Hinweis veröffentlicht."));
-    }
-    function hinweisLoeschen() {
-      if (!confirm("Globalen Hinweis wirklich löschen?")) return;
-      db.ref("hinweis").remove().then(() => {
-        setStatus("Globaler Hinweis gelöscht.");
-        document.getElementById("globalHinweis").value = "";
-      });
-    }
+/* ===========================================================
+   Mehrfach-Import + automatisches Speichern
+   =========================================================== */
+async function importiereMehrereRundenPDF() {
+  const fileInput = document.getElementById("importFile");
+  const ziel = document.getElementById("importZiel").value;
 
-    // Turniertitel
-    function titelAnzeigen() {
-      const text = document.getElementById("turnierTitel").value.trim();
-      db.ref("titel").set({ text })
-        .then(() => setStatus("Titel aktualisiert."))
-        .catch(err => setStatus("Fehler beim Titel: " + err.message));
-    }
-    function titelLoeschen() {
-      if (!confirm("Titel wirklich löschen?")) return;
-      db.ref("titel").remove()
-        .then(() => {
-          setStatus("Titel gelöscht.");
-          document.getElementById("turnierTitel").value = "";
-        })
-        .catch(err => setStatus("Fehler beim Löschen des Titels: " + err.message));
-    }
-    async function titelLaden() {
-      const snap = await db.ref("titel").once("value");
-      const v = snap.val();
-      const text = (v && typeof v === "object") ? (v.text || "") : (typeof v === "string" ? v : "");
-      document.getElementById("turnierTitel").value = text || "";
-      setStatus("Titel geladen.");
-    }
+  if (!fileInput.files.length) {
+    return setStatus("Bitte mindestens eine PDF-Datei auswählen.");
+  }
 
-    // Slideshow-Steuerung
-    async function slideshowLaden() {
-      const snap = await db.ref("slideshow/intervalMs").once("value");
-      const ms = snap.val();
-      const sec = ms ? Math.round(ms / 1000) : 10;
-      document.getElementById("slideshowInterval").value = sec;
-      setStatus(`Slideshow-Wechselzeit geladen: ${sec} s`);
-    }
-    async function slideshowSpeichern() {
-      const input = document.getElementById("slideshowInterval");
-      let sec = parseInt(input.value, 10);
-      if (isNaN(sec)) sec = 10;
-      sec = Math.max(3, Math.min(120, sec));
-      const ms = sec * 1000;
-      await db.ref("slideshow/intervalMs").set(ms);
-      setStatus(`Slideshow-Wechselzeit gespeichert: ${sec} s`);
-    }
+  setStatus("Importiere mehrere Runden...");
 
-    // Rundenliste laden & Auswahl erhalten
-    function ladeRunden() {
-      const selectIds = ["rundeSelectAktuell","rundeSelectNaechste","rundeSelectUebernaechste"];
-      const previousSelection = {};
-      selectIds.forEach(id => {
-        const el = document.getElementById(id);
-        previousSelection[id] = el ? el.value : "";
-      });
+  // Wir gehen jede Datei einzeln durch und nutzen GENAU deine funktionierende Import-Logik
+  for (const file of fileInput.files) {
 
-      db.ref("runden").once("value", (snapshot) => {
-        const daten = snapshot.val();
-        const keys = daten ? Object.keys(daten) : [];
+    // Temporär: wir laden die aktuelle Datei alleine in das Input-Feld
+    const temp = new DataTransfer();
+    temp.items.add(file);
+    document.getElementById("importFile").files = temp.files;
 
-        selectIds.forEach(id => {
-          const sel = document.getElementById(id);
-          if (!sel) return;
+    // Import durch deine vollständige Solo+Paar+Gruppen Funktion
+    await importiereRundePDF();
 
-          sel.innerHTML = '<option value="">-- Runde auswählen --</option>';
-          keys.forEach(r => {
-            const opt = document.createElement("option");
-            opt.value = r;
-            opt.textContent = r;
-            sel.appendChild(opt);
-          });
+    // Danach direkt speichern wie beim Einzel-Speichern:
+    const { runde, paare, hinweis } = readFields(ziel);
+    if (!runde) continue; // Falls Parsing fehlschlug, nächste Datei
 
-          const wanted = previousSelection[id];
-          if (wanted && keys.includes(wanted)) {
-            sel.value = wanted;
-          } else if (!keys.includes(wanted)) {
-            sel.value = "";
-          }
-        });
-      });
-    }
+    const key = runde.replace(/[.#$/\[\]]/g, "-");
 
-    function laden(typ) {
-      const select = document.getElementById("rundeSelect" + capitalize(typ));
-      const runde = select.value;
-      if (!runde) return;
-      db.ref("runden/" + runde).once("value", (snapshot) => {
-        setFields(typ, snapshot.val());
-        setStatus(`Runde "${runde}" geladen.`);
-      });
-    }
+    await db.ref("runden/" + key).set({ runde, paare, hinweis });
+  }
 
-    function setSelectValue(id, value) {
+  // Eingabe zurücksetzen
+  document.getElementById("importFile").value = "";
+
+  ladeRunden();
+  setStatus("Mehrfach-Import & Speichern abgeschlossen.");
+}
+
+
+
+
+
+/* ===========================================================
+   Runden: Speichern | Anzeigen | Löschen | Laden
+   =========================================================== */
+function speichern(typ) {
+  const { runde, paare, hinweis } = readFields(typ);
+  if (!runde) return setStatus("Bitte Rundenname eingeben.");
+
+  const key = runde.replace(/[.#$/\[\]]/g, "-");
+
+  db.ref("runden/" + key).set({ runde, paare, hinweis })
+    .then(() => {
+      setStatus(`Runde "${runde}" gespeichert.`);
+      ladeRunden();
+      setSelectValue("rundeSelect" + capitalize(typ), key);
+    })
+    .catch(err => setStatus("Fehler: " + err.message));
+}
+
+function anzeigen(typ) {
+  const { runde, paare, hinweis } = readFields(typ);
+  if (!runde) return setStatus("Bitte Runde eingeben oder laden.");
+
+  db.ref("anzeige/" + typ).set({ runde, paare, hinweis })
+    .then(() => setStatus(`"${runde}" wird als ${typ}-Runde angezeigt.`))
+    .catch(err => setStatus("Fehler: " + err.message));
+}
+
+function loeschen(typ) {
+  const select = document.getElementById("rundeSelect" + capitalize(typ));
+  const runde = select.value;
+
+  if (!runde) return setStatus("Bitte Runde auswählen.");
+  if (!confirm(`Soll die Runde "${runde}" wirklich gelöscht werden?`)) return;
+
+  db.ref("runden/" + runde).remove()
+    .then(() => {
+      setStatus("Runde gelöscht.");
+      ladeRunden();
+    })
+    .catch(err => setStatus("Fehler: " + err.message));
+}
+
+/* ===========================================================
+   Mehrere Runden löschen
+   =========================================================== */
+function loeschenMehrere(typ) {
+  const select = document.getElementById("rundeSelect" + capitalize(typ));
+  const selected = Array.from(select.selectedOptions).map(o => o.value);
+
+  if (!selected.length) {
+    return setStatus("Bitte mindestens eine Runde zum Löschen auswählen.");
+  }
+
+  if (!confirm("Sollen diese Runden wirklich gelöscht werden?\n\n" + selected.join("\n"))) {
+    return;
+  }
+
+  const updates = {};
+  selected.forEach(rundeKey => {
+    updates["runden/" + rundeKey] = null;
+  });
+
+  db.ref().update(updates)
+    .then(() => {
+      setStatus(`Gelöscht: ${selected.length} Runde${selected.length > 1 ? "n" : ""}.`);
+      ladeRunden();
+    })
+    .catch(err => setStatus("Fehler beim Mehrfach-Löschen: " + err.message));
+}
+
+
+
+function laden(typ) {
+  const select = document.getElementById("rundeSelect" + capitalize(typ));
+  const runde = select.value;
+
+  if (!runde) return;
+
+  db.ref("runden/" + runde).once("value", (snapshot) => {
+    setFields(typ, snapshot.val());
+    setStatus(`Runde "${runde}" geladen.`);
+  });
+}
+
+
+/* ===========================================================
+   Globaler Hinweis
+   =========================================================== */
+function hinweisAnzeigen() {
+  const text = document.getElementById("globalHinweis").value.trim();
+  db.ref("hinweis").set({ text })
+    .then(() => setStatus("Globaler Hinweis veröffentlicht."));
+}
+
+function hinweisLoeschen() {
+  if (!confirm("Globalen Hinweis wirklich löschen?")) return;
+
+  db.ref("hinweis").remove()
+    .then(() => {
+      setStatus("Globaler Hinweis gelöscht.");
+      document.getElementById("globalHinweis").value = "";
+    });
+}
+
+
+/* ===========================================================
+   Titel
+   =========================================================== */
+function titelAnzeigen() {
+  const text = document.getElementById("turnierTitel").value.trim();
+
+  db.ref("titel").set({ text })
+    .then(() => setStatus("Titel aktualisiert."))
+    .catch(err => setStatus("Fehler beim Titel: " + err.message));
+}
+
+function titelLoeschen() {
+  if (!confirm("Titel wirklich löschen?")) return;
+
+  db.ref("titel").remove()
+    .then(() => {
+      setStatus("Titel gelöscht.");
+      document.getElementById("turnierTitel").value = "";
+    })
+    .catch(err => setStatus("Fehler beim Löschen des Titels: " + err.message));
+}
+
+async function titelLaden() {
+  const snap = await db.ref("titel").once("value");
+  const v = snap.val();
+  const text =
+    (v && typeof v === "object") ? (v.text || "") :
+    (typeof v === "string" ? v : "");
+
+  document.getElementById("turnierTitel").value = text || "";
+  setStatus("Titel geladen.");
+}
+
+
+/* ===========================================================
+   Slideshow
+   =========================================================== */
+async function slideshowLaden() {
+  const snap = await db.ref("slideshow/intervalMs").once("value");
+  const ms = snap.val();
+  const sec = ms ? Math.round(ms / 1000) : 10;
+
+  document.getElementById("slideshowInterval").value = sec;
+  setStatus(`Slideshow-Wechselzeit geladen: ${sec} s`);
+}
+
+async function slideshowSpeichern() {
+  const input = document.getElementById("slideshowInterval");
+  let sec = parseInt(input.value, 10);
+
+  if (isNaN(sec)) sec = 10;
+  sec = Math.max(3, Math.min(120, sec));
+
+  const ms = sec * 1000;
+
+  await db.ref("slideshow/intervalMs").set(ms);
+  setStatus(`Slideshow-Wechselzeit gespeichert: ${sec} s`);
+}
+
+
+/* ===========================================================
+   Rundenliste aktualisieren
+   =========================================================== */
+function ladeRunden() {
+  const selectIds = [
+    "rundeSelectAktuell",
+    "rundeSelectNaechste",
+    "rundeSelectUebernaechste"
+  ];
+
+  const previousSelection = {};
+
+  selectIds.forEach(id => {
+    const el = document.getElementById(id);
+    previousSelection[id] = el ? el.value : "";
+  });
+
+  db.ref("runden").once("value", (snapshot) => {
+    const daten = snapshot.val();
+    const keys = daten ? Object.keys(daten) : [];
+
+    selectIds.forEach(id => {
       const sel = document.getElementById(id);
       if (!sel) return;
-      if (value && Array.from(sel.options).some(o => o.value === value)) {
-        sel.value = value;
-      } else {
-        sel.value = "";
-      }
-    }
 
-    // Weiterrutschen (atomar) + UI/Dropdowns mitziehen
-    async function weiterrutschen() {
-      try {
-        const snap = await db.ref("anzeige").once("value");
-        const daten = snap.val() || {};
-        const aktuell       = normalize(daten.aktuell || {});
-        const naechste      = normalize(daten.naechste || {});
-        const uebernaechste = normalize(daten.uebernaechste || {});
+      sel.innerHTML = '<option value="">-- Runde auswählen --</option>';
 
-        // 1) Atomares DB-Update
-        await db.ref().update({
-          "anzeige/aktuell":       naechste,
-          "anzeige/naechste":      uebernaechste,
-          "anzeige/uebernaechste": {}
-        });
+      keys.forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r;
+        opt.textContent = r;
+        sel.appendChild(opt);
+      });
 
-        // 2) UI-Felder mitziehen
-        setFields('aktuell', naechste);
-        setFields('naechste', uebernaechste);
-        setFields('uebernaechste', { runde:'', paare:[], hinweis:'' });
+      const wanted = previousSelection[id];
+      sel.value = keys.includes(wanted) ? wanted : "";
+    });
+  });
+}
 
-        // 3) Dropdowns mitrutschen lassen
-        setSelectValue("rundeSelectAktuell",      naechste.runde || "");
-        setSelectValue("rundeSelectNaechste",     uebernaechste.runde || "");
-        setSelectValue("rundeSelectUebernaechste","");
+function setSelectValue(id, value) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
 
-        setStatus("Runden sind weitergerutscht (atomar, UI & Dropdowns aktualisiert).");
-      } catch (err) {
-        setStatus("Fehler beim Weiterrutschen: " + err.message);
-      }
-    }
+  if (value && Array.from(sel.options).some(o => o.value === value)) {
+    sel.value = value;
+  } else {
+    sel.value = "";
+  }
+}
 
-    // Initial
-    ladeRunden();
-    slideshowLaden();
-    titelLaden();
+
+/* ===========================================================
+   Weiterrutschen (Runden verschieben)
+   =========================================================== */
+async function weiterrutschen() {
+  try {
+    const snap = await db.ref("anzeige").once("value");
+    const daten = snap.val() || {};
+
+    const aktuell       = normalize(daten.aktuell || {});
+    const naechste      = normalize(daten.naechste || {});
+    const uebernaechste = normalize(daten.uebernaechste || {});
+
+    await db.ref().update({
+      "anzeige/aktuell":       naechste,
+      "anzeige/naechste":      uebernaechste,
+      "anzeige/uebernaechste": {}
+    });
+
+    setFields("aktuell", naechste);
+    setFields("naechste", uebernaechste);
+    setFields("uebernaechste", { runde: "", paare: [], hinweis: "" });
+
+    setSelectValue("rundeSelectAktuell", naechste.runde || "");
+    setSelectValue("rundeSelectNaechste", uebernaechste.runde || "");
+    setSelectValue("rundeSelectUebernaechste", "");
+
+    setStatus("Runden sind weitergerutscht.");
+  } catch (err) {
+    setStatus("Fehler beim Weiterrutschen: " + err.message);
+  }
+}
+
+
+/* ===========================================================
+   Initiale automatische Datenladungen
+   =========================================================== */
+ladeRunden();
+slideshowLaden();
+titelLaden();
+
+
+
+
+
   </script>
+
 </body>
 </html>

@@ -1,446 +1,274 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <title>Turnieranzeige</title>
+<meta charset="UTF-8" />
+<title>Turnieranzeige</title>
 
-  <!-- Firebase v8: nur App + Realtime Database -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-  <style>
-    :root{
-      --bg: #5a5a5a;       /* angenehmes Hellgrau */
-      --fg: #ffffff;       /* Schrift: weiß */
-      --muted: #e5e7eb;    /* Nebeninfos */
-      --box: #6b6b6b;      /* Kartenhintergrund */
-      --shadow: rgba(0,0,0,0.3);
-      --fade: 600ms;       /* Slideshow-Fade */
-      --footer-h: 20vh;    /* Höhe der unteren Leiste */
-    }
+<style>
+:root{
 
-    html, body {
-      height: 100%;
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
-      background: var(--bg);
-      color: var(--fg);
-    }
+  /* === FARBCONFIG === */
 
-    /* Gesamtlayout: Header (auto) + Main (flex:1) + Footer (fix) */
-    .page {
-      height: 100%;
-      display: grid;
-      grid-template-rows: auto 1fr var(--footer-h);
-    }
+  --color-bg: #6f6f6f;
+  --color-box-bg: #4a4a4a;
+  --color-box-border: rgba(255,255,255,0.12);
 
-   /* ===== HEADER (Überschrift + Uhr) ===== */
+  --color-title: #ffffff;
+  --color-clock: #ffffff;
+
+  --color-aktuell-header: #5445ff;
+  --color-aktuell-name: #ffffff;
+  --color-aktuell-paare: #ffffff;
+  --color-aktuell-hinweis: #d9dadb;
+
+  --color-naechste-header: #5445ff;
+  --color-naechste-name: #ffffff;
+  --color-naechste-paare: #ffffff;
+  --color-naechste-hinweis: #d9dadb;
+
+  --color-global-hinweis: #ff8903;
+
+  --color-footer-bg: rgba(0,0,0,0.22);
+
+
+
+  /* === SCHRIFTGRÖSSEN === */
+
+  --size-title: 3.1vw;
+  --size-clock: 2.4vw;
+
+  --size-aktuell-header: 1.8vw;
+  --size-aktuell-name: 1.7vw;
+  --size-aktuell-paare: 1.55vw;
+  --size-aktuell-hinweis: 1.25vw;
+
+  --size-naechste-header: 1.8vw;
+  --size-naechste-name: 1.7vw;
+  --size-naechste-paare: 1.55vw;
+  --size-naechste-hinweis: 1.25vw;
+
+  --size-global-hinweis: 4vw;
+
+
+
+  --footer-h: 18vh;
+  --gap: 1.2vw;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-title);
+}
+
+.page { height: 100%; display: grid; grid-template-rows: auto 1fr var(--footer-h); }
+
+/* HEADER */
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  padding: 1.5vh 2vw 0.5vh;
-  box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; padding: 1vh 1.5vw 0.5vh;
 }
-
 #titel {
-  font-weight: 800;
-  line-height: 1.1;
-  text-shadow: 0 2px 8px var(--shadow);
-  font-size: 4vw;            /* große Turnier-Überschrift */
-  letter-spacing: .01em;
-  min-height: 1.2em;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 80vw;
-  margin: 0 auto;
+  font-size: var(--size-title);
+  font-weight: 800; text-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  max-width: 75vw; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
+  text-align: center; color: var(--color-title);
 }
-
 .clock {
-  position: absolute;
-  right: 2vw;
-  font-weight: 700;
-  font-size: 3vw;
-  line-height: 1;
-  text-shadow: 0 2px 8px var(--shadow);
+  position: absolute; right: 1.5vw;
+  font-size: var(--size-clock);
+  font-weight: 700; color: var(--color-clock);
 }
 
+/* MAIN */
+.main { display: flex; flex-direction: column; padding: 0.6vh 1.2vw; }
+.runden-container { display: flex; gap: var(--gap); flex: 1; min-height: 0; }
+.runde-box {
+  background: var(--color-box-bg);
+  border-radius: 0.8rem; padding: 1.1vh 1.2vw;
+  box-shadow: 0 0 16px rgba(0,0,0,0.35);
+  flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  border: 1px solid var(--color-box-border);
+}
 
-    /* ===== MAIN (Runden) ===== */
-    .main {
-      display: flex;
-      flex-direction: column;
-      padding: 1vh 2vw 1vh;
-      box-sizing: border-box;
-    }
-    .runden-container {
-      flex: 1;
-      display: flex;
-      gap: 2vw;
-      align-items: stretch;
-      justify-content: center;
-      min-height: 0;
-    }
-    .runde-box {
-      background: var(--box);
-      border-radius: 1.2rem;
-      padding: 2vh 2vw;
-      width: 48%;
-      box-shadow: 0 0 22px var(--shadow);
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-    .runde-box h1 {
-      font-size: 2.6vw;
-      margin: 0 0 1vh 0;
-      color: var(--fg);
-      text-shadow: 0 2px 8px var(--shadow);
-    }
-    .runde-box h2 {
-      font-size: 2.2vw;
-      margin: 0 0 1.2vh 0;
-      color: var(--fg);
-      text-shadow: 0 2px 6px var(--shadow);
-    }
-    ul {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      font-size: 1.9vw;
-      line-height: 1.3;
-      overflow: auto;
-      flex: 1;
-      border-top: 1px solid rgba(255,255,255,0.15);
-      border-bottom: 1px solid rgba(0,0,0,0.15);
-    }
-    li { padding: .35em 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    li:last-child { border-bottom: none; }
-    p.hinweis {
-      margin: 1vh 0 0 0;
-      font-size: 1.6vw;
-      color: var(--muted);
-      min-height: 1.2em;
-    }
+/* Überschriften */
+.runde-box h1 { font-weight: 700; margin: 0 0 0.4vh 0; }
+.runde-box:first-child h1 { color: var(--color-aktuell-header); font-size: var(--size-aktuell-header); }
+.runde-box:nth-child(2) h1 { color: var(--color-naechste-header); font-size: var(--size-naechste-header); }
 
-    /* ===== FOOTER-BALKEN (Slideshow | Globaler Hinweis | Logo) ===== */
-    .footer {
-      display: grid;
-      grid-template-columns: 10vw 1fr 10vw;  /* links Slideshow, Mitte Hinweis, rechts Logo */
-      gap: 2vw;
-      align-items: center;
-      padding: 1vh 2vw;
-      box-sizing: border-box;
-      border-top: 2px solid rgba(255,255,255,0.12);
-      background: linear-gradient(0deg, rgba(0,0,0,0.18), rgba(0,0,0,0.10));
-      box-shadow: inset 0 8px 16px rgba(0,0,0,0.15);
-    }
+/* Runden-Namen */
+#rundeAktuell { color: var(--color-aktuell-name); font-size: var(--size-aktuell-name); margin: 0 0 .7vh; }
+#rundeNaechste { color: var(--color-naechste-name); font-size: var(--size-naechste-name); margin: 0 0 .7vh; }
 
-    /* Slideshow fix in Spalte links */
-    .media-slot {
-      position: relative;
-      height: calc(var(--footer-h) - 2vh); /* Abzug Padding oben/unten */
-      width: 100%;
-      border: 2px solid rgba(255,255,255,0.12);
-      border-radius: 1rem;
-      box-shadow: 0 0 12px rgba(0,0,0,0.3);
-      overflow: hidden;
-      user-select: none;
-    }
-    .slides { position: absolute; inset: 0; }
-    .slides img {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      max-height: 100%; max-width: 100%;
-      width: auto; height: auto;
-      object-fit: contain;
-      opacity: 0; transition: opacity var(--fade) ease;
-      filter: drop-shadow(0 6px 18px rgba(0,0,0,0.35));
-      will-change: opacity; backface-visibility: hidden; pointer-events: none;
-    }
-    .slides img.active { opacity: 1; }
-    .slides-placeholder {
-      position: absolute; inset: 0; display: grid; place-items: center;
-      color: var(--muted); font-size: 1.2vw; text-align: center; padding: 0 1rem;
-    }
-    .slides-controls {
-      position: absolute; inset: 0; display: flex;
-      align-items: stretch; justify-content: space-between; pointer-events: none;
-    }
-    .slides-controls > div { width: 18%; pointer-events: auto; cursor: pointer; }
+/* Listen */
+.list-viewport { position: relative; overflow: hidden; flex: 1; min-height: 0;
+  border: 1px solid rgba(255,255,255,0.10); border-radius: 0.5rem;
+}
+.list-track { position: absolute; left: 0; top: 0; width: 100%; }
 
-    /* Globaler Hinweis zentriert im Footer */
-    #globalHinweis {
-      text-align: center;
-      font-weight: 700;
-      font-size: 4vw;
-      color: var(--fg);
-      text-shadow: 0 2px 8px var(--shadow);
-      padding: 0 .5rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+#trackAktuell ul { font-size: var(--size-aktuell-paare); }
+#trackAktuell li { color: var(--color-aktuell-paare); }
 
-    /* Logo rechts im Footer */
-    .logo-wrap {
-      height: calc(var(--footer-h) - 2vh);
-      display: grid; place-items: center;
-      border: 2px solid rgba(255,255,255,0.12);
-      border-radius: 1rem;
-      box-shadow: 0 0 12px rgba(0,0,0,0.3);
-      overflow: hidden;
-    }
-    .logo-wrap img {
-      max-height: 100%; max-width: 100%;
-      object-fit: contain;
-      filter: drop-shadow(0 6px 18px rgba(0,0,0,0.35));
-      display: none;
-    }
+#trackNaechste ul { font-size: var(--size-naechste-paare); }
+#trackNaechste li { color: var(--color-naechste-paare); }
 
-    @media (max-width: 1200px) {
-      #titel { font-size: 5vw; }
-      .clock { font-size: 4vw; }
-      .runde-box h1 { font-size: 3vw; }
-      .runde-box h2 { font-size: 2.6vw; }
-      ul { font-size: 2.3vw; }
-      p.hinweis { font-size: 2vw; }
-      #globalHinweis { font-size: 2.4vw; }
-    }
-  </style>
+/* Endlosscroll */
+@keyframes scrollY { from { transform: translateY(0); } to { transform: translateY(calc(-1 * var(--scroll-distance, 0px))); } }
+
+/* Hinweise */
+#hinweisAktuell { color: var(--color-aktuell-hinweis); font-size: var(--size-aktuell-hinweis); }
+#hinweisNaechste { color: var(--color-naechste-hinweis); font-size: var(--size-naechste-hinweis); }
+
+/* FOOTER */
+.footer {
+  display: grid; grid-template-columns: 9vw 1fr 9vw;
+  padding: 0.5vh 1.2vw; gap: var(--gap); align-items: center;
+  background: var(--color-footer-bg);
+}
+
+.media-slot { position: relative; height: calc(var(--footer-h) - 1vh);
+  border-radius: 0.8rem; overflow: hidden;
+  border: 0px solid rgba(255,255,255,0.12);
+}
+
+.slides img { position: absolute; inset: 0; margin: auto;
+  max-height: 100%; max-width: 100%; opacity: 0; transition: opacity .6s; }
+.slides img.active { opacity: 1; }
+
+#globalHinweis {
+  text-align: center;
+  font-weight: 700;
+  color: var(--color-global-hinweis);
+  font-size: var(--size-global-hinweis);
+  text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+}
+
+.logo-wrap img { max-height: 100%; max-width: 100%; display: none; }
+</style>
 </head>
+
 <body>
-  <div class="page">
-    <!-- HEADER -->
-    <header class="header">
-      <div id="titel">Turnier</div>
-      <div class="clock" id="clock">--:--</div>
-    </header>
+<div class="page">
 
-    <!-- MAIN -->
-    <main class="main">
-      <div class="runden-container">
-        <div class="runde-box">
-          <h1>Laufende Runde</h1>
-          <h2 id="rundeAktuell">–</h2>
-          <ul id="paareAktuell"></ul>
-          <p class="hinweis" id="hinweisAktuell"></p>
-        </div>
+<header class="header">
+  <div id="titel">Turnier</div>
+  <div class="clock" id="clock">--:--</div>
+</header>
 
-        <div class="runde-box">
-          <h1>Nächste Runde</h1>
-          <h2 id="rundeNaechste">–</h2>
-          <ul id="paareNaechste"></ul>
-          <p class="hinweis" id="hinweisNaechste"></p>
-        </div>
-      </div>
-    </main>
+<main class="main">
+  <div class="runden-container">
 
-    <!-- FOOTER-BALKEN -->
-    <footer class="footer">
-      <!-- Slideshow links -->
-      <div class="media-slot" id="mediaSlot">
-        <div class="slides" id="slides"></div>
-        <div class="slides-placeholder" id="slidesPlaceholder">
-          Lege Bilder in <code>./slides/</code> oder <code>./sponsoren/</code> – oder nutze eine <code>slides.json</code>.
-        </div>
-        <div class="slides-controls">
-          <div class="left"  id="slidePrev"  aria-label="vorheriges Bild"></div>
-          <div class="right" id="slideNext"  aria-label="nächstes Bild"></div>
-        </div>
-      </div>
+    <div class="runde-box">
+      <h1>Laufende Runde</h1>
+      <h2 id="rundeAktuell">–</h2>
+      <div class="list-viewport"><div class="list-track" id="trackAktuell"></div></div>
+      <p id="hinweisAktuell"></p>
+    </div>
 
-      <!-- Globaler Hinweis in der Mitte -->
-      <div id="globalHinweis"></div>
+    <div class="runde-box">
+      <h1>Nächste Runde</h1>
+      <h2 id="rundeNaechste">–</h2>
+      <div class="list-viewport"><div class="list-track" id="trackNaechste"></div></div>
+      <p id="hinweisNaechste"></p>
+    </div>
 
-      <!-- Logo rechts -->
-      <div class="logo-wrap">
-        <img id="logoImg" alt="Logo">
-      </div>
-    </footer>
   </div>
+</main>
 
-  <script>
-    // === Firebase: nur Realtime Database ===
-    const firebaseConfig = {
-      apiKey: "AIzaSyBVoEpZHVOqJKI4FOhedx7gWxkfefHjf0g",
-      authDomain: "testseite-turnier.firebaseapp.com",
-      databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "testseite-turnier",
-      storageBucket: "testseite-turnier.firebasestorage.app",
-      messagingSenderId: "1038700024579",
-      appId: "1:1038700024579:web:f0289dd1c7506f63f5cf36"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+<footer class="footer">
+  <div class="media-slot"><div class="slides" id="slides"></div></div>
+  <div id="globalHinweis"></div>
+  <div class="logo-wrap"><img id="logoImg" alt="Logo"></div>
+</footer>
 
-    // === Titel (vom Sender bearbeitbar) ===
-    db.ref("titel").on("value", (s) => {
-      // Erwartet { text: "…" } – fällt zurück auf direkte Zeichenkette
-      const v = s.val();
-      const text = (v && typeof v === "object") ? (v.text || "") : (typeof v === "string" ? v : "");
-      document.getElementById("titel").innerText = text || "Turnier";
-    });
+</div>
 
-    // === Uhr oben rechts ===
-    function pad2(n){ return n < 10 ? "0"+n : ""+n; }
-    function updateClock() {
-      const now = new Date();
-      const hh = pad2(now.getHours());
-      const mm = pad2(now.getMinutes());
-      document.getElementById("clock").textContent = `${hh}:${mm}`;
-    }
-    updateClock();
-    setInterval(updateClock, 1000);
+<script>
+/* Firebase */
+firebase.initializeApp({ databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app" });
+const db = firebase.database();
 
-    // === Live-Datenanzeige Runden ===
-    db.ref("anzeige/aktuell").on("value", (s) => {
-      const d = s.val() || {};
-      document.getElementById("rundeAktuell").innerText = d.runde || "-";
-      document.getElementById("paareAktuell").innerHTML = (d.paare || []).map(p => `<li>${p}</li>`).join("");
-      document.getElementById("hinweisAktuell").innerText = d.hinweis || "";
-    });
+/* Titel */
+db.ref("titel").on("value",s=>{document.getElementById("titel").innerText=s.val()?.text||"Turnier";});
 
-    db.ref("anzeige/naechste").on("value", (s) => {
-      const d = s.val() || {};
-      document.getElementById("rundeNaechste").innerText = d.runde || "-";
-      document.getElementById("paareNaechste").innerHTML = (d.paare || []).map(p => `<li>${p}</li>`).join("");
-      document.getElementById("hinweisNaechste").innerText = d.hinweis || "";
-    });
+/* Uhr */
+setInterval(()=>{document.getElementById("clock").innerText=new Date().toTimeString().slice(0,5)},1000);
 
-    // === Globaler Hinweis (jetzt im Footer, in der Mitte) ===
-    db.ref("hinweis").on("value", (s) => {
-      const d = s.val();
-      document.getElementById("globalHinweis").innerText = d?.text || "";
-    });
+/* Scroll-Funktion */
+function applyAutoScroll(trackId, arr){
+  const track=document.getElementById(trackId);
+  const makeUL=()=>`<ul>${arr.map(p=>`<li>${p}</li>`).join("")}</ul>`;
+  track.innerHTML = makeUL()+makeUL();
+  requestAnimationFrame(()=>{
+    const viewport=track.parentElement, first=track.querySelector("ul");
+    if(!first)return;
+    const h=first.scrollHeight, v=viewport.clientHeight;
+    track.style.animation="none"; track.style.transform="translateY(0)";
+    if(h<=v){ track.innerHTML=makeUL(); return; }
+    track.style.setProperty("--scroll-distance",h+"px");
+    track.style.animation=`scrollY ${Math.max(12,h/24)}s linear infinite`;
+  });
+}
 
-    // === Logo (lokal, optional) ===
-    const LOGO_CANDIDATES = [
-      "logo.png", "logo.webp", "logo.jpg",
-      "logo/logo.png", "logo/logo.webp", "logo/logo.jpg",
-      "logos/logo.png", "logos/logo.webp", "logos/logo.jpg"
-    ];
-    function preload(src) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(src);
-        img.onerror = reject;
-        img.src = src;
-      });
-    }
-    async function tryLoadLogo() {
-      const el = document.getElementById("logoImg");
-      for (const path of LOGO_CANDIDATES) {
-        try { el.src = await preload(path); el.style.display = "block"; return; }
-        catch { /* weiter probieren */ }
-      }
-      el.style.display = "none";
-    }
-    tryLoadLogo();
+/* Runde live */
+db.ref("anzeige/aktuell").on("value",s=>{const d=s.val()||{};
+  document.getElementById("rundeAktuell").innerText=d.runde||"–";
+  applyAutoScroll("trackAktuell",d.paare||[]);
+  document.getElementById("hinweisAktuell").innerText=d.hinweis||"";
+});
+db.ref("anzeige/naechste").on("value",s=>{const d=s.val()||{};
+  document.getElementById("rundeNaechste").innerText=d.runde||"–";
+  applyAutoScroll("trackNaechste",d.paare||[]);
+  document.getElementById("hinweisNaechste").innerText=d.hinweis||"";
+});
 
-    // === Slideshow (rein lokal) ===
-    let slideIntervalMs = 10000; // Standard 10s, per Sender steuerbar
-    const LOCAL_FOLDERS   = ["slides", "sponsoren", ""];
-    const PROBE_PREFIXES  = ["slide-", "sponsor-"];
-    const PROBE_RANGE     = 40;
-    const EXTENSIONS      = [".jpg",".jpeg",".png",".webp",".gif"];
+/* Globaler Hinweis */
+db.ref("hinweis").on("value",s=>{document.getElementById("globalHinweis").innerText=s.val()?.text||""});
 
-    const slidesEl = document.getElementById("slides");
-    const placeholderEl = document.getElementById("slidesPlaceholder");
-    const mediaSlotEl = document.getElementById("mediaSlot");
-    const btnPrev = document.getElementById("slidePrev");
-    const btnNext = document.getElementById("slideNext");
+/* Logo Auto-Load */
+(function(){
+  const img=document.getElementById("logoImg");
+  ["logo.png","logo.jpg","logo.webp"].forEach(src=>{
+    const t=new Image();
+    t.onload=()=>{img.src=src;img.style.display="block";}
+    t.src=src;
+  });
+})();
 
-    let slideUrls = [];
-    let slideIndex = 0;
-    let timer = null;
-    let paused = false;
-
-    async function loadManifest(name="slides.json") {
-      try {
-        const res = await fetch(name, { cache: "no-store" });
-        if (!res.ok) return null;
-        const arr = await res.json();
-        return Array.isArray(arr) ? arr : null;
-      } catch { return null; }
-    }
-
-    async function loadFromLocalFolders() {
-      const found = [];
-      for (const dir of LOCAL_FOLDERS) {
-        for (const pre of PROBE_PREFIXES) {
-          for (let n = 1; n <= PROBE_RANGE; n++) {
-            for (const ext of EXTENSIONS) {
-              const url = (dir ? `${dir}/` : "") + `${pre}${n}${ext}`;
-              try { await preload(url); found.push(url); } catch {}
-            }
-          }
-        }
-      }
-      return found;
-    }
-
-    function renderSlides(urls) {
-      slidesEl.innerHTML = "";
-      urls.forEach((u, i) => {
-        const img = document.createElement("img");
-        img.src = u;
-        if (i === 0) img.classList.add("active");
-        slidesEl.appendChild(img);
-      });
-      placeholderEl.style.display = urls.length ? "none" : "grid";
-      slideIndex = 0;
-    }
-
-    function show(index) {
-      if (!slideUrls.length) return;
-      const imgs = slidesEl.querySelectorAll("img");
-      imgs.forEach((img, i) => img.classList.toggle("active", i === index));
-      slideIndex = index;
-    }
-
-    function next() { if (!slideUrls.length) return; show((slideIndex + 1) % slideUrls.length); restartTimer(); }
-    function prev() { if (!slideUrls.length) return; show((slideIndex - 1 + slideUrls.length) % slideUrls.length); restartTimer(); }
-
-    function startTimer() {
-      stopTimer();
-      if (!slideUrls.length) return;
-      timer = setInterval(() => { if (!paused) next(); }, slideIntervalMs);
-    }
-    function stopTimer() { if (timer) clearInterval(timer); timer = null; }
-    function restartTimer() { stopTimer(); startTimer(); }
-
-    mediaSlotEl.addEventListener("mouseenter", () => { paused = true; });
-    mediaSlotEl.addEventListener("mouseleave", () => { paused = false; });
-    btnNext.addEventListener("click", next);
-    btnPrev.addEventListener("click", prev);
-    mediaSlotEl.addEventListener("click", next);
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowRight") next();
-      if (e.key === "ArrowLeft")  prev();
-    });
-
-    // Wechselzeit live vom Sender
-    db.ref("slideshow/intervalMs").on("value", (s) => {
-      const v = s.val();
-      if (!v || typeof v !== "number") return;
-      slideIntervalMs = Math.max(3000, Math.min(120000, v));
-      restartTimer();
-    });
-
-    async function initSlides() {
-      let urls = await loadManifest("slides.json");
-      if (!urls) urls = await loadManifest("sponsoren.json");
-      if (!urls || urls.length === 0) urls = await loadFromLocalFolders();
-      slideUrls = (urls || []).filter(Boolean);
-      renderSlides(slideUrls);
-      startTimer();
-    }
-
-    initSlides();
-  </script>
+/* Slideshow (auto-detect slide1–slide50 any format) */
+let slideIdx=0, slideTimer, slideIntervalMs=10000;
+const bases=Array.from({length:50},(_,i)=>`slide${i+1}`);
+const exts=["jpg","jpeg","png","webp","gif","JPG","PNG","JPEG","WEBP","GIF"];
+function loadSlides(){
+  const box=document.getElementById("slides");
+  box.innerHTML="";
+  bases.forEach(base=>exts.forEach(ext=>{
+    const img=new Image();
+    img.onload=()=>{box.appendChild(img);startSlides();};
+    img.src=`${base}.${ext}`;
+  }));
+}
+function startSlides(){
+  const slides=[...document.querySelectorAll("#slides img")];
+  if(!slides.length)return;
+  slides.forEach(s=>s.classList.remove("active"));
+  slideIdx=0; slides[0].classList.add("active");
+  if(slideTimer)clearInterval(slideTimer);
+  if(slides.length<=1)return;
+  slideTimer=setInterval(()=>{
+    slides[slideIdx].classList.remove("active");
+    slideIdx=(slideIdx+1)%slides.length;
+    slides[slideIdx].classList.add("active");
+  },slideIntervalMs);
+}
+db.ref("slideshow/intervalMs").on("value",s=>{slideIntervalMs=s.val()||10000;startSlides();});
+loadSlides();
+</script>
 </body>
 </html>
