@@ -23,12 +23,12 @@
   --color-aktuell-header: #5445ff;
   --color-aktuell-name: #ffffff;
   --color-aktuell-paare: #ffffff;
-  --color-aktuell-hinweis: #d9dadb;
+  --color-aktuell-hinweis: #ff8903;
 
   --color-naechste-header: #5445ff;
   --color-naechste-name: #ffffff;
   --color-naechste-paare: #ffffff;
-  --color-naechste-hinweis: #d9dadb;
+  --color-naechste-hinweis: #ff8903;
 
   --color-global-hinweis: #ff8903;
 
@@ -44,14 +44,14 @@
   --size-aktuell-header: 1.8vw;
   --size-aktuell-name: 1.7vw;
   --size-aktuell-paare: 1.55vw;
-  --size-aktuell-hinweis: 1.25vw;
+  --size-aktuell-hinweis: 3vw;
 
   --size-naechste-header: 1.8vw;
   --size-naechste-name: 1.7vw;
   --size-naechste-paare: 1.55vw;
-  --size-naechste-hinweis: 1.25vw;
+  --size-naechste-hinweis: 4vw;
 
-  --size-global-hinweis: 4vw;
+  --size-global-hinweis: 3vw;
 
 
 
@@ -125,6 +125,13 @@ body {
 #hinweisAktuell { color: var(--color-aktuell-hinweis); font-size: var(--size-aktuell-hinweis); }
 #hinweisNaechste { color: var(--color-naechste-hinweis); font-size: var(--size-naechste-hinweis); }
 
+#hinweisAktuell,
+#hinweisNaechste {
+  margin-top: 0.3vh;   
+  margin-bottom: 0.3vh;
+}
+
+
 /* FOOTER */
 .footer {
   display: grid; grid-template-columns: 9vw 1fr 9vw;
@@ -133,7 +140,7 @@ body {
 }
 
 .media-slot { position: relative; height: calc(var(--footer-h) - 1vh);
-  border-radius: 0.8rem; overflow: hidden;
+  border-radius: 0rem; overflow: hidden;
   border: 0px solid rgba(255,255,255,0.12);
 }
 
