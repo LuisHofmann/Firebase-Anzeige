@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<title>Turnieranzeige Fläche 1</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<style>
+:root{
+
+  /* === FARBCONFIG === */
+
+  --color-bg: #6f6f6f;
+  --color-box-bg: #4a4a4a;
+  --color-box-border: rgba(255,255,255,0.12);
+
+  --color-title: #ffffff;
+  --color-clock: #ffffff;
+
+  --color-aktuell-header: #5445ff;
+  --color-aktuell-name: #ffffff;
+  --color-aktuell-paare: #ffffff;
+  --color-aktuell-hinweis: #ff8903;
+
+  --color-naechste-header: #5445ff;
+  --color-naechste-name: #ffffff;
+  --color-naechste-paare: #ffffff;
+  --color-naechste-hinweis: #ff8903;
+
+  --color-global-hinweis: #ff8903;
+
+  --color-footer-bg: rgba(0,0,0,0.22);
+
+
+
+  /* === SCHRIFTGRÖSSEN === */
+
+  --size-title: 3.1vw;
+  --size-clock: 2.4vw;
+
+  --size-aktuell-header: 1.8vw;
+  --size-aktuell-name: 1.7vw;
+  --size-aktuell-paare: 2.4vw;
+  --size-aktuell-hinweis: 3vw;
+
+  --size-naechste-header: 1.8vw;
+  --size-naechste-name: 1.7vw;
+  --size-naechste-paare: 2.4vw;
+  --size-naechste-hinweis: 4vw;
+
+  --size-global-hinweis: 3vw;
+
+
+
+  --footer-h: 18vh;
+  --gap: 1.2vw;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-title);
+}
+
+.page { height: 100%; display: grid; grid-template-rows: auto 1fr var(--footer-h); }
+
+/* HEADER */
+.header {
+  display: flex; align-items: center; justify-content: center;
+  position: relative; padding: 1vh 1.5vw 0.5vh;
+}
+#titel {
+  font-size: var(--size-title);
+  font-weight: 800; text-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  max-width: 75vw; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
+  text-align: center; color: var(--color-title);
+}
+.clock {
+  position: absolute; right: 1.5vw;
+  font-size: var(--size-clock);
+  font-weight: 700; color: var(--color-clock);
+}
+
+/* MAIN */
+.main { display: flex; flex-direction: column; padding: 0.6vh 1.2vw; }
+.runden-container { display: flex; gap: var(--gap); flex: 1; min-height: 0; }
+.runde-box {
+  background: var(--color-box-bg);
+  border-radius: 0.8rem; padding: 1.1vh 1.2vw;
+  box-shadow: 0 0 16px rgba(0,0,0,0.35);
+  flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  border: 1px solid var(--color-box-border);
+}
+
+/* Überschriften */
+.runde-box h1 { font-weight: 700; margin: 0 0 0.4vh 0; }
+.runde-box:first-child h1 { color: var(--color-aktuell-header); font-size: var(--size-aktuell-header); }
+.runde-box:nth-child(2) h1 { color: var(--color-naechste-header); font-size: var(--size-naechste-header); }
+
+/* Runden-Namen */
+#rundeAktuell { color: var(--color-aktuell-name); font-size: var(--size-aktuell-name); margin: 0 0 .7vh; }
+#rundeNaechste { color: var(--color-naechste-name); font-size: var(--size-naechste-name); margin: 0 0 .7vh; }
+
+/* Listen */
+.list-viewport { position: relative; overflow: hidden; flex: 1; min-height: 0;
+  border: 1px solid rgba(255,255,255,0.10); border-radius: 0.5rem;
+}
+.list-track { position: absolute; left: 0; top: 0; width: 100%; }
+
+#trackAktuell ul { font-size: var(--size-aktuell-paare); }
+#trackAktuell li { color: var(--color-aktuell-paare); }
+
+#trackNaechste ul { font-size: var(--size-naechste-paare); }
+#trackNaechste li { color: var(--color-naechste-paare); }
+
+/* Endlosscroll */
+@keyframes scrollY { from { transform: translateY(0); } to { transform: translateY(calc(-1 * var(--scroll-distance, 0px))); } }
+
+/* Hinweise */
+#hinweisAktuell { color: var(--color-aktuell-hinweis); font-size: var(--size-aktuell-hinweis); }
+#hinweisNaechste { color: var(--color-naechste-hinweis); font-size: var(--size-naechste-hinweis); }
+
+#hinweisAktuell,
+#hinweisNaechste {
+  margin-top: 0.3vh;   
+  margin-bottom: 0.3vh;
+}
+
+
+/* FOOTER */
+.footer {
+  display: grid; grid-template-columns: 9vw 1fr 9vw;
+  padding: 0.5vh 1.2vw; gap: var(--gap); align-items: center;
+  background: var(--color-footer-bg);
+}
+
+.media-slot { position: relative; height: calc(var(--footer-h) - 1vh);
+  border-radius: 0rem; overflow: hidden;
+  border: 0px solid rgba(255,255,255,0.12);
+}
+
+.slides img { position: absolute; inset: 0; margin: auto;
+  max-height: 100%; max-width: 100%; opacity: 0; transition: opacity .6s; }
+.slides img.active { opacity: 1; }
+
+#globalHinweis {
+  text-align: center;
+  font-weight: 700;
+  color: var(--color-global-hinweis);
+  font-size: var(--size-global-hinweis);
+  text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+}
+
+.logo-wrap img { max-height: 100%; max-width: 100%; display: none; }
+</style>
+</head>
+
+<body>
+<div class="page">
+
+<header class="header">
+  <div id="titel">Turnier</div>
+  <div class="clock" id="clock">--:--</div>
+</header>
+
+<main class="main">
+  <div class="runden-container">
+
+    <div class="runde-box">
+      <h1>Laufende Runde</h1>
+      <h2 id="rundeAktuell">–</h2>
+      <div class="list-viewport"><div class="list-track" id="trackAktuell"></div></div>
+      <p id="hinweisAktuell"></p>
+    </div>
+
+    <div class="runde-box">
+      <h1>Nächste Runde</h1>
+      <h2 id="rundeNaechste">–</h2>
+      <div class="list-viewport"><div class="list-track" id="trackNaechste"></div></div>
+      <p id="hinweisNaechste"></p>
+    </div>
+
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="media-slot"><div class="slides" id="slides"></div></div>
+  <div id="globalHinweis"></div>
+  <div class="logo-wrap"><img id="logoImg" alt="Logo"></div>
+</footer>
+
+</div>
+
+<script>
+/* Firebase */
+firebase.initializeApp({ databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app" });
+const db = firebase.database();
+
+/* Titel */
+db.ref("titel").on("value",s=>{document.getElementById("titel").innerText=s.val()?.text||"Turnier";});
+
+/* Uhr */
+setInterval(()=>{document.getElementById("clock").innerText=new Date().toTimeString().slice(0,5)},1000);
+
+/* Scroll-Funktion */
+function applyAutoScroll(trackId, arr){
+  const track=document.getElementById(trackId);
+  const makeUL=()=>`<ul>${arr.map(p=>`<li>${p}</li>`).join("")}</ul>`;
+  track.innerHTML = makeUL()+makeUL();
+  requestAnimationFrame(()=>{
+    const viewport=track.parentElement, first=track.querySelector("ul");
+    if(!first)return;
+    const h=first.scrollHeight, v=viewport.clientHeight;
+    track.style.animation="none"; track.style.transform="translateY(0)";
+    if(h<=v){ track.innerHTML=makeUL(); return; }
+    track.style.setProperty("--scroll-distance",h+"px");
+    track.style.animation=`scrollY ${Math.max(12,h/24)}s linear infinite`;
+  });
+}
+
+/* Runde live */
+db.ref("anzeige/aktuell").on("value",s=>{const d=s.val()||{};
+  document.getElementById("rundeAktuell").innerText=d.runde||"–";
+  applyAutoScroll("trackAktuell",d.paare||[]);
+  document.getElementById("hinweisAktuell").innerText=d.hinweis||"";
+});
+db.ref("anzeige/naechste").on("value",s=>{const d=s.val()||{};
+  document.getElementById("rundeNaechste").innerText=d.runde||"–";
+  applyAutoScroll("trackNaechste",d.paare||[]);
+  document.getElementById("hinweisNaechste").innerText=d.hinweis||"";
+});
+
+/* Globaler Hinweis */
+db.ref("hinweis").on("value",s=>{document.getElementById("globalHinweis").innerText=s.val()?.text||""});
+
+/* Logo Auto-Load */
+(function(){
+  const img=document.getElementById("logoImg");
+  ["logo.png","logo.jpg","logo.webp"].forEach(src=>{
+    const t=new Image();
+    t.onload=()=>{img.src=src;img.style.display="block";}
+    t.src=src;
+  });
+})();
+
+/* Slideshow (auto-detect slide1–slide50 any format) */
+let slideIdx=0, slideTimer, slideIntervalMs=10000;
+const bases=Array.from({length:50},(_,i)=>`slide${i+1}`);
+const exts=["jpg","jpeg","png","webp","gif","JPG","PNG","JPEG","WEBP","GIF"];
+function loadSlides(){
+  const box=document.getElementById("slides");
+  box.innerHTML="";
+  bases.forEach(base=>exts.forEach(ext=>{
+    const img=new Image();
+    img.onload=()=>{box.appendChild(img);startSlides();};
+    img.src=`${base}.${ext}`;
+  }));
+}
+function startSlides(){
+  const slides=[...document.querySelectorAll("#slides img")];
+  if(!slides.length)return;
+  slides.forEach(s=>s.classList.remove("active"));
+  slideIdx=0; slides[0].classList.add("active");
+  if(slideTimer)clearInterval(slideTimer);
+  if(slides.length<=1)return;
+  slideTimer=setInterval(()=>{
+    slides[slideIdx].classList.remove("active");
+    slideIdx=(slideIdx+1)%slides.length;
+    slides[slideIdx].classList.add("active");
+  },slideIntervalMs);
+}
+db.ref("slideshow/intervalMs").on("value",s=>{slideIntervalMs=s.val()||10000;startSlides();});
+loadSlides();
+</script>
+</body>
+</html>
