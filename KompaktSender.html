@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>KompaktSender – Fläche 1 & 2</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+  </script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f4f4f4;
+      padding: 2em;
+      max-width: 2200px;
+      margin: auto;
+    }
+
+    h1, h2, h3 {
+      text-align: center;
+    }
+
+    label {
+      display: block;
+      margin-top: 0.7em;
+      font-weight: bold;
+    }
+
+    textarea, input, select {
+      width: 100%;
+      padding: 0.5em;
+      margin-top: 0.3em;
+    }
+
+    .two-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5em;
+      margin-top: 1.5em;
+    }
+
+    .runden-container {
+      display: flex;
+      justify-content: space-between;
+      gap: 1.5em;
+      margin-bottom: 2em;
+      flex-wrap: wrap;
+    }
+
+    .runde-block {
+      background: #fff;
+      flex: 1;
+      padding: 1.5em;
+      border-radius: 1em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      min-width: 320px;
+    }
+
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5em;
+      margin-top: 1em;
+      white-space: nowrap;
+    }
+
+    button {
+      padding: 0.7em 1.2em;
+      font-size: 1em;
+      flex: 1;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 1em;
+      padding: 0.75em;
+      background: #e0e0e0;
+      border: 1px solid #ccc;
+      font-size: 1em;
+      text-align: center;
+      border-radius: 0.75em;
+    }
+
+    .tausch-button {
+      display: block;
+      margin: 0.5em auto 1.2em auto;
+      padding: 1em 2em;
+      font-size: 1.1em;
+      background: #0078d4;
+      color: #fff;
+      border: none;
+      border-radius: 0.5em;
+      cursor: pointer;
+      max-width: 700px;
+    }
+
+    .tausch-button:hover {
+      background: #005fa3;
+    }
+
+    .card {
+      background: #fff;
+      padding: 1.2em;
+      border-radius: 1em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.08);
+      margin-bottom: 1.5em;
+    }
+
+    .surface {
+      background: #fff;
+      padding: 1.2em;
+      border-radius: 1em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.08);
+    }
+
+    .surface h2 {
+      margin-top: 0.2em;
+    }
+
+    .muted {
+      opacity: 0.75;
+      text-align: center;
+      margin-top: -0.5em;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>KompaktSender – Fläche 1 &amp; 2</h1>
+  <div class="muted">Steuert beide bestehenden Datenbanken gleichzeitig (Fläche 1 &amp; Fläche 2).</div>
+
+  <!-- Turniertitel (beide Flächen) -->
+  <div class="card">
+    <h2>Turniertitel (beide Flächen)</h2>
+    <label for="turnierTitel">Überschrift oben auf der Anzeige</label>
+    <input id="turnierTitel" placeholder="z. B. Landesmeisterschaft 2025" />
+
+    <div class="button-group">
+      <button onclick="titelAnzeigen()">Titel anzeigen</button>
+      <button onclick="titelLoeschen()">Titel löschen</button>
+      <button onclick="titelLaden()">Aktuellen Titel laden</button>
+    </div>
+  </div>
+
+  <!-- Slideshow (beide Flächen) -->
+  <div class="card">
+    <h2>Slideshow (beide Flächen)</h2>
+
+    <label for="slideshowInterval">Wechselzeit (Sekunden)</label>
+    <input id="slideshowInterval" type="number" min="3" max="120" step="1" placeholder="z. B. 10" />
+
+    <div class="button-group">
+      <button onclick="slideshowSpeichern()">Wechselzeit speichern</button>
+      <button onclick="slideshowLaden()">Aktuelle Wechselzeit laden</button>
+    </div>
+  </div>
+
+  <!-- Globaler Hinweis (beide Flächen) -->
+  <div class="card">
+    <h2>Globaler Hinweis (beide Flächen)</h2>
+
+    <input id="globalHinweis" placeholder="z. B. Turnierbeginn verschoben" />
+
+    <div class="button-group">
+      <button onclick="hinweisAnzeigen()">Hinweis anzeigen</button>
+      <button onclick="hinweisLoeschen()">Hinweis löschen</button>
+    </div>
+  </div>
+
+  <!-- Weiterrutschen beide Flächen -->
+  <button class="tausch-button" onclick="weiterrutschenBeide()">
+    Weiterrutschen BEIDE Flächen (Aktuelle → Nächste → Übernächste → 4. Runde)
+  </button>
+
+  <div class="two-cols">
+    <!-- Fläche 1 -->
+    <section class="surface">
+      <h2>Fläche 1</h2>
+
+      <!-- PDF Import -->
+      <div class="card">
+        <h3>Runde aus PDF importieren (Fläche 1)</h3>
+
+        <label for="f1_importFile">PDF-Datei wählen (.pdf)</label>
+        <input type="file" id="f1_importFile" accept=".pdf" multiple />
+
+        <label for="f1_importZiel">Zielrunde</label>
+        <select id="f1_importZiel">
+          <option value="aktuell">Laufende Runde</option>
+          <option value="naechste">Nächste Runde</option>
+          <option value="uebernaechste">Übernächste Runde</option>
+          <option value="ueberuebernaechste">4. Runde (versteckt)</option>
+        </select>
+
+        <div class="button-group">
+          <button onclick="importiereRundePDF('f1')">PDF importieren</button>
+          <button onclick="importiereRundePDF_undSpeichern('f1')">PDF importieren &amp; speichern</button>
+          <button onclick="importiereMehrereRundenPDF('f1')">Mehrere PDFs importieren &amp; speichern</button>
+        </div>
+      </div>
+
+      <!-- Rundenbereiche -->
+      <div class="runden-container">
+
+        <!-- Aktuell -->
+        <div class="runde-block" id="f1_aktuell">
+          <h3>Laufende Runde</h3>
+          <label for="f1_rundeAktuell">Rundenname</label>
+          <input id="f1_rundeAktuell" />
+
+          <label for="f1_paareAktuell">Startnummern &amp; Namen</label>
+          <textarea id="f1_paareAktuell" rows="6"></textarea>
+
+          <label for="f1_hinweisAktuell">Hinweistext</label>
+          <input id="f1_hinweisAktuell" placeholder="z. B. Aufstiege" />
+
+          <div class="button-group">
+            <button onclick="speichern('f1','aktuell')">Runde speichern</button>
+            <button onclick="anzeigen('f1','aktuell')">Als laufende Runde anzeigen</button>
+            <button onclick="loeschenMehrere('f1','aktuell')">Ausgewählte Runden löschen</button>
+          </div>
+
+          <label for="f1_rundeSelectAktuell">Gespeicherte Runden</label>
+          <select id="f1_rundeSelectAktuell" multiple size="6" onchange="laden('f1','aktuell')">
+            <option value="">-- Runde auswählen --</option>
+          </select>
+        </div>
+
+        <!-- Nächste -->
+        <div class="runde-block" id="f1_naechste">
+          <h3>Nächste Runde</h3>
+          <label for="f1_rundeNaechste">Rundenname</label>
+          <input id="f1_rundeNaechste" />
+
+          <label for="f1_paareNaechste">Startnummern &amp; Namen</label>
+          <textarea id="f1_paareNaechste" rows="6"></textarea>
+
+          <label for="f1_hinweisNaechste">Hinweistext</label>
+          <input id="f1_hinweisNaechste" placeholder="z. B. in zwei Gruppen" />
+
+          <div class="button-group">
+            <button onclick="speichern('f1','naechste')">Runde speichern</button>
+            <button onclick="anzeigen('f1','naechste')">Als nächste Runde anzeigen</button>
+            <button onclick="loeschenMehrere('f1','naechste')">Ausgewählte Runden löschen</button>
+          </div>
+
+          <label for="f1_rundeSelectNaechste">Gespeicherte Runden</label>
+          <select id="f1_rundeSelectNaechste" multiple size="6" onchange="laden('f1','naechste')">
+            <option value="">-- Runde auswählen --</option>
+          </select>
+        </div>
+
+        <!-- Übernächste -->
+        <div class="runde-block" id="f1_uebernaechste">
+          <h3>Übernächste Runde</h3>
+
+          <label for="f1_rundeUebernaechste">Rundenname</label>
+          <input id="f1_rundeUebernaechste" />
+
+          <label for="f1_paareUebernaechste">Startnummern &amp; Namen</label>
+          <textarea id="f1_paareUebernaechste" rows="6"></textarea>
+
+          <label for="f1_hinweisUebernaechste">Hinweistext</label>
+          <input id="f1_hinweisUebernaechste" placeholder="z. B. Runden geschachtelt" />
+
+          <div class="button-group">
+            <button onclick="speichern('f1','uebernaechste')">Runde speichern</button>
+            <button onclick="anzeigen('f1','uebernaechste')">Übernächste Runde anzeigen</button>
+            <button onclick="loeschenMehrere('f1','uebernaechste')">Ausgewählte Runden löschen</button>
+          </div>
+
+          <label for="f1_rundeSelectUebernaechste">Gespeicherte Runden</label>
+          <select id="f1_rundeSelectUebernaechste" multiple size="6" onchange="laden('f1','uebernaechste')">
+            <option value="">-- Runde auswählen --</option>
+          </select>
+        </div>
+
+        <div class="runde-block" id="f1_ueberuebernaechste">
+          <h3>4. Runde (versteckt)</h3>
+
+          <label for="f1_rundeUeberuebernaechste">Rundenname</label>
+          <input id="f1_rundeUeberuebernaechste" />
+
+          <label for="f1_paareUeberuebernaechste">Startnummern &amp; Namen</label>
+          <textarea id="f1_paareUeberuebernaechste" rows="6"></textarea>
+
+          <label for="f1_hinweisUeberuebernaechste">Hinweistext</label>
+          <input id="f1_hinweisUeberuebernaechste" placeholder="z. B. Reserve / später" />
+
+          <div class="button-group">
+            <button onclick="speichern('f1','ueberuebernaechste')">Runde speichern</button>
+            <button onclick="anzeigen('f1','ueberuebernaechste')">4. Runde anzeigen (nicht im Empfänger)</button>
+            <button onclick="loeschenMehrere('f1','ueberuebernaechste')">Ausgewählte Runden löschen</button>
+          </div>
+
+          <label for="f1_rundeSelectUeberuebernaechste">Gespeicherte Runden</label>
+          <select id="f1_rundeSelectUeberuebernaechste" multiple size="6" onchange="laden('f1','ueberuebernaechste')">
+            <option value="">-- Runde auswählen --</option>
+          </select>
+        </div>
+
+
+      </div>
+
+      <button class="tausch-button" onclick="weiterrutschen('f1')">
+        Weiterrutschen (nur Fläche 1)
+      </button>
+    </section>
+
+    <!-- Fläche 2 -->
+    <section class="surface">
+      <h2>Fläche 2</h2>
+
+      <!-- PDF Import -->
+      <div class="card">
+        <h3>Runde aus PDF importieren (Fläche 2)</h3>
+
+        <label for="f2_importFile">PDF-Datei wählen (.pdf)</label>
+        <input type="file" id="f2_importFile" accept=".pdf" multiple />
+
+        <label for="f2_importZiel">Zielrunde</label>
+        <select id="f2_importZiel">
+          <option value="aktuell">Laufende Runde</option>
+          <option value="naechste">Nächste Runde</option>
+          <option value="uebernaechste">Übernächste Runde</option>
+          <option value="ueberuebernaechste">4. Runde (versteckt)</option>
+        </select>
+
+        <div class="button-group">
+          <button onclick="importiereRundePDF('f2')">PDF importieren</button>
+          <button onclick="importiereRundePDF_undSpeichern('f2')">PDF importieren &amp; speichern</button>
+          <button onclick="importiereMehrereRundenPDF('f2')">Mehrere PDFs importieren &amp; speichern</button>
+        </div>
+      </div>
+
+      <!-- Rundenbereiche -->
+      <div class="runden-container">
+
+        <!-- Aktuell -->
+        <div class="runde-block" id="f2_aktuell">
+          <h3>Laufende Runde</h3>
+          <label for="f2_rundeAktuell">Rundenname</label>
+          <input id="f2_rundeAktuell" />
+
+          <label for="f2_paareAktuell">Startnummern &amp; Namen</label>
+          <textarea id="f2_paareAktuell" rows="6"></textarea>
+
+          <label for="f2_hinweisAktuell">Hinweistext</label>
+          <input id="f2_hinweisAktuell" placeholder="z. B. Aufstiege" />
+
+          <div class="button-group">
+            <button onclick="speichern('f2','aktuell')">Runde speichern</button>
+            <button onclick="anzeigen('f2','aktuell')">Als laufende Runde anzeigen</button>
+            <button onclick="loeschenMehrere('f2','aktuell')">Ausgewählte Runden löschen</button>
+          </div>
+
+          <label for="f2_rundeSelectAktuell">Gespeicherte Runden</label>
+          <select id="f2_rundeSelectAktuell" multiple size="6" onchange="laden('f2','aktuell')">
+            <option value="">-- Runde auswählen --</option>
+          </select>
+        </div>
+
+        <!-- Nächste -->
+        <div class="runde-block" id="f2_naechste">
+          <h3>Nächste Runde</h3>
+          <label for="f2_rundeNaechste">Rundenname</label>
+          <input id="f2_rundeNaechste" />
+
+          <label for="f2_paareNaechste">Startnummern &amp; Namen</label>
+          <textarea id="f2_paareNaechste" rows="6"></textarea>
+
+          <label for="f2_hinweisNaechste">Hinweistext</label>
+          <input id="f2_hinweisNaechste" placeholder="z. B. in zwei Gruppen" />
+
+          <div class="button-group">
+            <button onclick="speichern('f2','naechste')">Runde speichern</button>
+            <button onclick="anzeigen('f2','naechste')">Als nächste Runde anzeigen</button>
+            <button onclick="loeschenMehrere('f2','naechste')">Ausgewählte Runden löschen</button>
+          </div>
+
+          <label for="f2_rundeSelectNaechste">Gespeicherte Runden</label>
+          <select id="f2_rundeSelectNaechste" multiple size="6" onchange="laden('f2','naechste')">
+            <option value="">-- Runde auswählen --</option>
+          </select>
+        </div>
+
+        <!-- Übernächste -->
+        <div class="runde-block" id="f2_uebernaechste">
+          <h3>Übernächste Runde</h3>
+
+          <label for="f2_rundeUebernaechste">Rundenname</label>
+          <input id="f2_rundeUebernaechste" />
+
+          <label for="f2_paareUebernaechste">Startnummern &amp; Namen</label>
+          <textarea id="f2_paareUebernaechste" rows="6"></textarea>
+
+          <label for="f2_hinweisUebernaechste">Hinweistext</label>
+          <input id="f2_hinweisUebernaechste" placeholder="z. B. Runden geschachtelt" />
+
+          <div class="button-group">
+            <button onclick="speichern('f2','uebernaechste')">Runde speichern</button>
+            <button onclick="anzeigen('f2','uebernaechste')">Übernächste Runde anzeigen</button>
+            <button onclick="loeschenMehrere('f2','uebernaechste')">Ausgewählte Runden löschen</button>
+          </div>
+
+          <label for="f2_rundeSelectUebernaechste">Gespeicherte Runden</label>
+          <select id="f2_rundeSelectUebernaechste" multiple size="6" onchange="laden('f2','uebernaechste')">
+            <option value="">-- Runde auswählen --</option>
+          </select>
+        </div>
+
+        <div class="runde-block" id="f2_ueberuebernaechste">
+          <h3>4. Runde (versteckt)</h3>
+
+          <label for="f2_rundeUeberuebernaechste">Rundenname</label>
+          <input id="f2_rundeUeberuebernaechste" />
+
+          <label for="f2_paareUeberuebernaechste">Startnummern &amp; Namen</label>
+          <textarea id="f2_paareUeberuebernaechste" rows="6"></textarea>
+
+          <label for="f2_hinweisUeberuebernaechste">Hinweistext</label>
+          <input id="f2_hinweisUeberuebernaechste" placeholder="z. B. Reserve / später" />
+
+          <div class="button-group">
+            <button onclick="speichern('f2','ueberuebernaechste')">Runde speichern</button>
+            <button onclick="anzeigen('f2','ueberuebernaechste')">4. Runde anzeigen (nicht im Empfänger)</button>
+            <button onclick="loeschenMehrere('f2','ueberuebernaechste')">Ausgewählte Runden löschen</button>
+          </div>
+
+          <label for="f2_rundeSelectUeberuebernaechste">Gespeicherte Runden</label>
+          <select id="f2_rundeSelectUeberuebernaechste" multiple size="6" onchange="laden('f2','ueberuebernaechste')">
+            <option value="">-- Runde auswählen --</option>
+          </select>
+        </div>
+
+
+      </div>
+
+      <button class="tausch-button" onclick="weiterrutschen('f2')">
+        Weiterrutschen (nur Fläche 2)
+      </button>
+    </section>
+  </div>
+
+  <div id="status"></div>
+
+<script>
+/* ===========================================================
+   Firebase Setup (2 Apps)
+   =========================================================== */
+const firebaseConfigF1 = {
+  apiKey: "AIzaSyBVoEpZHVOqJKI4FOhedx7gWxkfefHjf0g",
+  authDomain: "testseite-turnier.firebaseapp.com",
+  databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "testseite-turnier",
+  storageBucket: "testseite-turnier.firebasestorage.app",
+  messagingSenderId: "1038700024579",
+  appId: "1:1038700024579:web:f0289dd1c7506f63f5cf36"
+};
+const firebaseConfigF2 = {
+  apiKey: "AIzaSyAeCvyJ1XCKXo5iFAQJ0KV_jFbcALAw3ys",
+  authDomain: "turnier-anzeige-datenbank-2.firebaseapp.com",
+  databaseURL: "https://turnier-anzeige-datenbank-2-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "turnier-anzeige-datenbank-2",
+  storageBucket: "turnier-anzeige-datenbank-2.firebasestorage.app",
+  messagingSenderId: "135722147220",
+  appId: "1:135722147220:web:e775d02e171c5451388381",
+  measurementId: "G-51JE3PKPB5"
+};
+
+firebase.initializeApp(firebaseConfigF1, "f1");
+firebase.initializeApp(firebaseConfigF2, "f2");
+
+const DBS = {
+  f1: firebase.app("f1").database(),
+  f2: firebase.app("f2").database()
+};
+
+function dbOf(f) {
+  return DBS[f];
+}
+
+/* ===========================================================
+   Zentrale Konfiguration für Kategorien / Formen (wie Sender 1/2)
+   =========================================================== */
+const FORM_KATEGORIEN = [
+  "Solo",
+  "Paar",
+  "Duo",
+  "Smallgroup",
+  "Formation",
+  "Gruppe"
+];
+
+const FORM_GRUPPEN_PREFIXE = [
+  "Solos",
+  "Duos",
+  "Smallgroups",
+  "Formationen"
+];
+
+/* ===========================================================
+   Hilfsfunktionen (UI + Format)
+   =========================================================== */
+function setStatus(text) {
+  document.getElementById("status").innerText = text;
+}
+
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function normalize(data) {
+  return {
+    runde: data?.runde || "",
+    paare: Array.isArray(data?.paare) ? data.paare : [],
+    hinweis: data?.hinweis || ""
+  };
+}
+
+function pid(f, base) {
+  return f + "_" + base;
+}
+
+function getFields(f, typ) {
+  return {
+    runde: document.getElementById(pid(f, "runde" + capitalize(typ))),
+    paare: document.getElementById(pid(f, "paare" + capitalize(typ))),
+    hinweis: document.getElementById(pid(f, "hinweis" + capitalize(typ)))
+  };
+}
+
+function setFields(f, typ, data) {
+  const d = normalize(data);
+  const fields = getFields(f, typ);
+
+  fields.runde.value = d.runde;
+  fields.paare.value = (d.paare || []).join("\n");
+  fields.hinweis.value = d.hinweis;
+}
+
+function readFields(f, typ) {
+  const fields = getFields(f, typ);
+  const paare = fields.paare.value.trim()
+    ? fields.paare.value.split("\n").map(s => s.trim()).filter(Boolean)
+    : [];
+
+  return {
+    runde: fields.runde.value.trim(),
+    paare,
+    hinweis: fields.hinweis.value.trim()
+  };
+}
+
+/* ===========================================================
+   Titel (beide Flächen)
+   =========================================================== */
+async function titelAnzeigen() {
+  const text = document.getElementById("turnierTitel").value.trim();
+  try {
+    await Promise.all([
+      dbOf("f1").ref("titel").set({ text }),
+      dbOf("f2").ref("titel").set({ text })
+    ]);
+    setStatus("Titel aktualisiert (beide Flächen).");
+  } catch (err) {
+    setStatus("Fehler beim Titel: " + err.message);
+  }
+}
+
+async function titelLoeschen() {
+  if (!confirm("Titel wirklich löschen (beide Flächen)?")) return;
+  try {
+    await Promise.all([
+      dbOf("f1").ref("titel").remove(),
+      dbOf("f2").ref("titel").remove()
+    ]);
+    document.getElementById("turnierTitel").value = "";
+    setStatus("Titel gelöscht (beide Flächen).");
+  } catch (err) {
+    setStatus("Fehler beim Löschen: " + err.message);
+  }
+}
+
+async function titelLaden() {
+  const readOne = async (f) => {
+    const snap = await dbOf(f).ref("titel").once("value");
+    const v = snap.val();
+    return (v && typeof v === "object") ? (v.text || "") : (typeof v === "string" ? v : "");
+  };
+
+  const [t1, t2] = await Promise.all([readOne("f1"), readOne("f2")]);
+  const shown = (t1 === t2) ? (t1 || "") : (t1 || t2 || "");
+  document.getElementById("turnierTitel").value = shown;
+
+  setStatus(t1 === t2
+    ? "Titel geladen."
+    : "Titel geladen (Hinweis: Fläche 1 und 2 haben aktuell unterschiedliche Titel – angezeigt wurde einer davon)."
+  );
+}
+
+/* ===========================================================
+   Slideshow (beide Flächen)
+   =========================================================== */
+async function slideshowLaden() {
+  const snap = await dbOf("f1").ref("slideshow/intervalMs").once("value");
+  const ms = snap.val();
+  const sec = ms ? Math.round(ms / 1000) : 10;
+
+  document.getElementById("slideshowInterval").value = sec;
+  setStatus(`Slideshow-Wechselzeit geladen: ${sec} s`);
+}
+
+async function slideshowSpeichern() {
+  const input = document.getElementById("slideshowInterval");
+  let sec = parseInt(input.value, 10);
+
+  if (isNaN(sec)) sec = 10;
+  sec = Math.max(3, Math.min(120, sec));
+
+  const ms = sec * 1000;
+
+  try {
+    await Promise.all([
+      dbOf("f1").ref("slideshow/intervalMs").set(ms),
+      dbOf("f2").ref("slideshow/intervalMs").set(ms)
+    ]);
+    setStatus(`Slideshow-Wechselzeit gespeichert (beide Flächen): ${sec} s`);
+  } catch (err) {
+    setStatus("Fehler beim Speichern der Slideshow: " + err.message);
+  }
+}
+
+/* ===========================================================
+   Globaler Hinweis (beide Flächen)
+   =========================================================== */
+async function hinweisAnzeigen() {
+  const text = document.getElementById("globalHinweis").value.trim();
+  try {
+    await Promise.all([
+      dbOf("f1").ref("hinweis").set({ text }),
+      dbOf("f2").ref("hinweis").set({ text })
+    ]);
+    setStatus("Globaler Hinweis veröffentlicht (beide Flächen).");
+  } catch (err) {
+    setStatus("Fehler beim Hinweis: " + err.message);
+  }
+}
+
+async function hinweisLoeschen() {
+  if (!confirm("Globalen Hinweis wirklich löschen (beide Flächen)?")) return;
+
+  try {
+    await Promise.all([
+      dbOf("f1").ref("hinweis").remove(),
+      dbOf("f2").ref("hinweis").remove()
+    ]);
+    document.getElementById("globalHinweis").value = "";
+    setStatus("Globaler Hinweis gelöscht (beide Flächen).");
+  } catch (err) {
+    setStatus("Fehler beim Löschen des Hinweises: " + err.message);
+  }
+}
+
+/* ===========================================================
+   Runden-Funktionen (pro Fläche, Logik wie Sender 1/2)
+   =========================================================== */
+function speichern(f, typ) {
+  const db = dbOf(f);
+  const { runde, paare, hinweis } = readFields(f, typ);
+  if (!runde) return setStatus("Bitte Rundenname eingeben.");
+
+  const key = runde.replace(/[.#$/\[\]]/g, "-");
+
+  db.ref("runden/" + key).set({ runde, paare, hinweis })
+    .then(() => {
+      setStatus(`Fläche ${f === "f1" ? "1" : "2"}: Runde "${runde}" gespeichert.`);
+      ladeRunden(f);
+      setSelectValue(f, "rundeSelect" + capitalize(typ), key);
+    })
+    .catch(err => setStatus("Fehler: " + err.message));
+}
+
+function anzeigen(f, typ) {
+  const db = dbOf(f);
+  const { runde, paare, hinweis } = readFields(f, typ);
+  if (!runde) return setStatus("Bitte Runde eingeben oder laden.");
+
+  db.ref("anzeige/" + typ).set({ runde, paare, hinweis })
+    .then(() => setStatus(`Fläche ${f === "f1" ? "1" : "2"}: "${runde}" wird als ${typ}-Runde angezeigt.`))
+    .catch(err => setStatus("Fehler: " + err.message));
+}
+
+function laden(f, typ) {
+  const db = dbOf(f);
+  const select = document.getElementById(pid(f, "rundeSelect" + capitalize(typ)));
+  const runde = select.value;
+
+  if (!runde) return;
+
+  db.ref("runden/" + runde).once("value", (snapshot) => {
+    setFields(f, typ, snapshot.val());
+    setStatus(`Fläche ${f === "f1" ? "1" : "2"}: Runde "${runde}" geladen.`);
+  });
+}
+
+function loeschenMehrere(f, typ) {
+  const db = dbOf(f);
+  const select = document.getElementById(pid(f, "rundeSelect" + capitalize(typ)));
+  const selected = Array.from(select.selectedOptions).map(o => o.value);
+
+  if (!selected.length) {
+    return setStatus("Bitte mindestens eine Runde zum Löschen auswählen.");
+  }
+
+  if (!confirm("Sollen diese Runden wirklich gelöscht werden?\n\n" + selected.join("\n"))) {
+    return;
+  }
+
+  const updates = {};
+  selected.forEach(rundeKey => {
+    updates["runden/" + rundeKey] = null;
+  });
+
+  db.ref().update(updates)
+    .then(() => {
+      setStatus(`Fläche ${f === "f1" ? "1" : "2"}: Gelöscht: ${selected.length} Runde${selected.length > 1 ? "n" : ""}.`);
+      ladeRunden(f);
+    })
+    .catch(err => setStatus("Fehler beim Mehrfach-Löschen: " + err.message));
+}
+
+function ladeRunden(f) {
+  const db = dbOf(f);
+  const selectIds = [
+    "rundeSelectAktuell",
+    "rundeSelectNaechste",
+    "rundeSelectUebernaechste",
+    "rundeSelectUeberuebernaechste"
+  ];
+
+  const previousSelection = {};
+
+  selectIds.forEach(id => {
+    const el = document.getElementById(pid(f, id));
+    previousSelection[id] = el ? el.value : "";
+  });
+
+  db.ref("runden").once("value", (snapshot) => {
+    const daten = snapshot.val();
+    const keys = daten ? Object.keys(daten) : [];
+
+    selectIds.forEach(id => {
+      const sel = document.getElementById(pid(f, id));
+      if (!sel) return;
+
+      sel.innerHTML = '<option value="">-- Runde auswählen --</option>';
+
+      keys.forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r;
+        opt.textContent = r;
+        sel.appendChild(opt);
+      });
+
+      const wanted = previousSelection[id];
+      sel.value = keys.includes(wanted) ? wanted : "";
+    });
+  });
+}
+
+function setSelectValue(f, idBase, value) {
+  const sel = document.getElementById(pid(f, idBase));
+  if (!sel) return;
+
+  if (value && Array.from(sel.options).some(o => o.value === value)) {
+    sel.value = value;
+  } else {
+    sel.value = "";
+  }
+}
+
+/* ===========================================================
+   Weiterrutschen (pro Fläche) + beide
+   =========================================================== */
+async function weiterrutschen(f) {
+  const db = dbOf(f);
+  try {
+    const snap = await db.ref("anzeige").once("value");
+    const daten = snap.val() || {};
+
+    const aktuell       = normalize(daten.aktuell || {});
+    const naechste      = normalize(daten.naechste || {});
+    const uebernaechste = normalize(daten.uebernaechste || {});
+    const ueberuebernaechste = normalize(daten.ueberuebernaechste || {});
+
+await db.ref().update({
+      "anzeige/aktuell":             naechste,
+      "anzeige/naechste":            uebernaechste,
+      "anzeige/uebernaechste":       ueberuebernaechste,
+      "anzeige/ueberuebernaechste":  {}
+    });
+
+    setFields(f, "aktuell", naechste);
+    setFields(f, "naechste", uebernaechste);
+    setFields(f, "uebernaechste", ueberuebernaechste);
+    setFields(f, "ueberuebernaechste", { runde: "", paare: [], hinweis: "" });
+
+    setSelectValue(f, "rundeSelectAktuell", naechste.runde ? naechste.runde.replace(/[.#$/\[\]]/g, "-") : "");
+    setSelectValue(f, "rundeSelectNaechste", uebernaechste.runde ? uebernaechste.runde.replace(/[.#$/\[\]]/g, "-") : "");
+    setSelectValue(f, "rundeSelectUebernaechste", ueberuebernaechste.runde ? ueberuebernaechste.runde.replace(/[.#$/\[\]]/g, "-") : "");
+    setSelectValue(f, "rundeSelectUeberuebernaechste", "");
+
+    setStatus(`Fläche ${f === "f1" ? "1" : "2"}: Runden sind weitergerutscht (inkl. 4. Runde).`);
+  } catch (err) {
+    setStatus("Fehler beim Weiterrutschen: " + err.message);
+  }
+}
+
+async function weiterrutschenBeide() {
+  await weiterrutschen("f1");
+  await weiterrutschen("f2");
+  setStatus("Beide Flächen: Runden sind weitergerutscht.");
+}
+
+/* ===========================================================
+   PDF Import (pro Fläche) – Logik wie Sender 1/2, nur mit Prefix
+   =========================================================== */
+async function importiereRundePDF(f) {
+  const fileInput = document.getElementById(pid(f, "importFile"));
+  const ziel = document.getElementById(pid(f, "importZiel")).value;
+
+  if (!fileInput.files.length) {
+    return setStatus("Bitte eine PDF-Datei auswählen.");
+  }
+
+  const file = fileInput.files[0];
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  let flat = "";
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    flat += content.items.map(it => it.str).join(" ") + "\n";
+  }
+
+  flat = flat.replace(/\s+/g, " ").trim();
+
+  /* ===========================================================
+     Startklasse / Gruppe / Art bestimmen
+     =========================================================== */
+  let startklasse = "";
+  let startgruppe = "";
+  let turnierart = "";
+  let anzeigenGruppe = "";
+
+  const labelsRegex = /Form:\s*Startgruppe:\s*(?:Startklasse|Liga):\s*Turnierart:/i;
+  const labelsMatch = flat.match(labelsRegex);
+
+  if (labelsMatch) {
+    const afterLabels = flat.slice(labelsMatch.index + labelsMatch[0].length);
+
+    let metaBlock = afterLabels;
+    const veranstMatch = metaBlock.match(/\bVeranstalter:/i);
+    const teilnMatch = metaBlock.match(/\bTeilnehmer\b/i);
+
+    let cutIndex = metaBlock.length;
+    if (veranstMatch && veranstMatch.index < cutIndex) cutIndex = veranstMatch.index;
+    if (teilnMatch && teilnMatch.index < cutIndex) cutIndex = teilnMatch.index;
+
+    metaBlock = metaBlock.slice(0, cutIndex).trim();
+
+    const klasseRegex = /\b(M-Reihe|A-Reihe|B-Reihe|PL)\b/i;
+    const artRegex = /\b(Standard|Latein|Discofox|Urban|Commertial|offen)\b/i;
+
+    const klasseMatch = metaBlock.match(klasseRegex);
+    const artMatch = metaBlock.match(artRegex);
+
+    if (klasseMatch && artMatch) {
+      startklasse = klasseMatch[1].trim();
+      turnierart = artMatch[1].trim();
+
+      const beforeKlasse = metaBlock.slice(0, klasseMatch.index).trim();
+
+      let ohneDatum = beforeKlasse.replace(
+        /^\d{1,2}\.\d{1,2}\.\d{4}\s+[^\s]+\s+[^\s]+\s+/,
+        ""
+      ).trim();
+
+      const formRegex = /\b(DAT-Turnier|Deutsche DAT-Meisterschaft|Regionalmeisterschaft|Clubturnier|Stadtmeisterschaft|Verbandsmeisterschaft)\b/i;
+      const formMatch = ohneDatum.match(formRegex);
+
+      if (formMatch) {
+        startgruppe = ohneDatum
+          .slice(formMatch.index + formMatch[0].length)
+          .trim();
+      } else {
+        startgruppe = ohneDatum;
+      }
+    }
+  }
+
+  if (!startklasse || !startgruppe || !turnierart) {
+    let klasseMatch = flat.match(/\b(M-Reihe|A-Reihe|B-Reihe|PL)\b/i);
+    if (!klasseMatch) {
+      klasseMatch = flat.match(/\b(Sichtung|Vorrunde|Endrunde|Finale|Zwischenrunde)\b/i);
+    }
+    startklasse = startklasse || (klasseMatch ? klasseMatch[1] : "");
+
+    let gruppeMatch = flat.match(/\b[HJ]\d(?:[\/-]\d)?\b/i);
+
+    if (!gruppeMatch) {
+      const prefixAlternativen = FORM_GRUPPEN_PREFIXE.join("|");
+      const dynRegex = new RegExp(
+        "\\b(?:" + prefixAlternativen + ")\\s+[A-Z]\\d(?:[\\/-]\\d)?\\b",
+        "i"
+      );
+      gruppeMatch = flat.match(dynRegex);
+    }
+
+    if (!gruppeMatch) gruppeMatch = flat.match(/\bRS\d(?:[\/-]\d)?\b/i);
+    if (!gruppeMatch) gruppeMatch = flat.match(/\bS\d(?:[\/-]\d)?\b/i);
+
+    if (!startgruppe && gruppeMatch) {
+      startgruppe = gruppeMatch[0];
+    }
+
+    const artMatch2 = flat.match(/\b(Standard|Latein|Discofox|Urban|Commertial|offen)\b/i);
+    if (!turnierart && artMatch2) {
+      turnierart = artMatch2[1];
+    }
+  }
+
+  const formationHeaderMatch = flat.match(/Nr\.\s*(Formation|Gruppe)\s*:/i);
+  const isFormationOrGroup = !!formationHeaderMatch;
+
+  anzeigenGruppe = startgruppe || "";
+  anzeigenGruppe = anzeigenGruppe.replace(/\bRS(\d(?:[\/-]\d)?)\b/gi, "Rising Star $1");
+  anzeigenGruppe = anzeigenGruppe.replace(/\bH(\d(?:[\/-]\d)?)\b/gi, "HobbyLeague $1");
+  anzeigenGruppe = anzeigenGruppe.replace(/\bS(\d(?:[\/-]\d)?)\b/gi, "SupaLeague $1");
+
+  if (!startklasse || !anzeigenGruppe || !turnierart) {
+    return setStatus("Konnte Startklasse/Gruppe/Turnierart nicht eindeutig bestimmen.");
+  }
+
+  const rundenname = `${startklasse} ${anzeigenGruppe} ${turnierart}`.trim();
+
+  let paarLines = [];
+  let parseMode = "";
+
+  /* ===========================================================
+     Gruppentanz-Runden
+     =========================================================== */
+  const groupRegex = /(\d)\.\s*Gruppe:?\s*\(\d+\)\s*([0-9 ]+?)(?=\s*\d\.\s*Gruppe|$)/gi;
+  let groupMatch;
+  let groupLines = [];
+
+  while ((groupMatch = groupRegex.exec(flat)) !== null) {
+    const groupNum = groupMatch[1];
+    const numbers = groupMatch[2]
+      .trim()
+      .split(/\s+/)
+      .filter(n => /^\d+$/.test(n))
+      .join(" ");
+
+    groupLines.push(`${groupNum}. Gruppe: ${numbers}`);
+  }
+
+  if (groupLines.length > 0) {
+    setFields(f, ziel, { runde: rundenname, paare: groupLines, hinweis: "" });
+    return setStatus(`Import erfolgreich (Gruppen erkannt): ${rundenname}`);
+  }
+
+  /* ===========================================================
+     AB HIER: NUR TEILNEHMERBEREICH VERWENDEN
+     =========================================================== */
+  const teilStartRegex = new RegExp(
+    "Nr\\.\\s*(?:" + FORM_KATEGORIEN.join("|") + ")\\s*:",
+    "i"
+  );
+  const teilStart = flat.match(teilStartRegex);
+  if (teilStart) {
+    flat = flat.slice(teilStart.index);
+  }
+
+  /* ===========================================================
+     Paarrunden
+     =========================================================== */
+  const paarRegex = /(\d+)\s+([A-ZÄÖÜ][\wäöüß\-']+(?:\s+[A-ZÄÖÜ][\wäöüß\-']+)*)\s*\/\s*([A-ZÄÖÜ][\wäöüß\-']+(?:\s+[A-ZÄÖÜ][\wäöüß\-']+)*)/g;
+  let match;
+
+  while ((match = paarRegex.exec(flat)) !== null) {
+    const nr = match[1];
+    let nameL = match[2].trim();
+    let nameR = match[3].trim();
+
+    const clubWords = [
+      "TSC","TSV","TSA","TG","TC","Club","Tanzschule","tanzteam","TanzCentrum","Tanzzentrum","die tanzmanufaktur","Altburger","Trautz und Salmen","Altburger Dance Movement e. V.","CreaDom","St",
+      "Mannheim","Kelkheim","Motzi","Taunustanzschule",
+      "Tanzwelt","Tanzhaus","Tanzstudio","Tanzsportzentrum",
+      "Formation","Dance","Ballettschule","Sportschule",
+      "Akademie","Center","e\\.V\\.?","GmbH","GbR","Let's","Move","Motsi","Tanzsport",
+      "Frankfurt","Berlin","Eppstein","Kelsterbach","MotsiMabuse","Ludwigsfelde"
+    ];
+    const CLEAN_CLUB = new RegExp(`\\b(?:${clubWords.join("|")})(?:\\s+[A-Za-zäöüß\\-']+)*$`, "i");
+
+    nameL = nameL.replace(CLEAN_CLUB, "").trim();
+    nameR = nameR.replace(CLEAN_CLUB, "").trim();
+
+    paarLines.push(`${nr} ${nameL} / ${nameR}`);
+  }
+  if (paarLines.length) {
+    parseMode = "pair";
+  }
+
+  /* ===========================================================
+     Solorunden
+     =========================================================== */
+  if (!paarLines.length && !isFormationOrGroup) {
+    const soloRegex = /(\d+)\s+([A-ZÄÖÜ][\wäöüß\-']+(?:\s+[A-ZÄÖÜ][\wäöüß\-']+)+)/g;
+
+    const clubWords = [
+      "TSC","TSV","TSA","TG","TC","Club","Tanzschule","tanzteam","TanzCentrum","Tanzzentrum","die tanzmanufaktur","Altburger","Trautz und Salmen","Altburger Dance Movement e. V.","CreaDom","St",
+      "Mannheim","Kelkheim","Motzi","Taunustanzschule",
+      "Tanzwelt","Tanzhaus","Tanzstudio","Tanzsportzentrum",
+      "Formation","Dance","Ballettschule","Sportschule",
+      "Akademie","Center","e\\.V\\.?","GmbH","GbR","Let's","Move","Motsi","Tanzsport",
+      "Frankfurt","Berlin","Eppstein","Kelsterbach","MotsiMabuse","Ludwigsfelde"
+    ];
+
+    const CLEAN_CLUB = new RegExp(`\\b(?:${clubWords.join("|")})(?:\\s+[\\wäöüß\\-']+)*$`, "i");
+
+    while ((match = soloRegex.exec(flat)) !== null) {
+      const nr = match[1];
+      let name = match[2].trim();
+      name = name.replace(CLEAN_CLUB, "").trim();
+      paarLines.push(`${nr} ${name}`);
+    }
+
+    if (paarLines.length) {
+      parseMode = "solo";
+    }
+  }
+
+  /* ===========================================================
+     Formation / Kleingruppen / Teams
+     =========================================================== */
+  if (!paarLines.length && isFormationOrGroup) {
+    const clubWordsTeam = [
+      "TSC","TSV","TSA","TG","TC","Club","Tanzschule","tanzteam","TanzCentrum","Tanzzentrum","die tanzmanufaktur","Altburger","Trautz und Salmen","Altburger Dance Movement e. V.","CreaDom","St",
+      "Mannheim","Kelkheim","Motzi","Taunustanzschule",
+      "Tanzwelt","Tanzhaus","Tanzstudio","Tanzsportzentrum",
+      "Formation","Dance","Ballettschule","Sportschule",
+      "Akademie","Center","e\\.V\\.?","GmbH","GbR","Let's","Move","Motsi","Tanzsport",
+      "Frankfurt","Berlin","Eppstein","Kelsterbach","MotsiMabuse","Ludwigsfelde"
+    ];
+    const CLEAN_CLUB_TEAM = new RegExp(
+      `\\b(?:${clubWordsTeam.join("|")})(?:\\s+[\\wäöüß\\-']+)*$`,
+      "i"
+    );
+
+    const teamRegex = /(\d+)\s+(.+?)(?=(?:\s+\d+\s)|$)/g;
+    while ((match = teamRegex.exec(flat)) !== null) {
+      const nr = match[1];
+      let name = match[2].trim();
+      name = name.replace(CLEAN_CLUB_TEAM, "").trim();
+      if (name) {
+        paarLines.push(`${nr} ${name}`);
+      }
+    }
+
+    if (paarLines.length) {
+      parseMode = "team";
+    }
+  }
+
+  const soloLine = /^\d+\s+[A-ZÄÖÜ][a-zäöüß]+(\s+[A-ZÄÖÜ][a-zäöüß]+)+$/;
+  const pairLine = /^\d+\s+[A-ZÄÖÜ].+\/.+$/;
+
+  if (parseMode === "pair" || parseMode === "solo") {
+    paarLines = paarLines
+      .map(l => l.trim())
+      .filter(l => soloLine.test(l) || pairLine.test(l));
+  }
+
+  if (!paarLines.length) {
+    return setStatus("Import fehlgeschlagen: Keine Teilnehmerliste gefunden.");
+  }
+
+  setFields(f, ziel, {
+    runde: rundenname,
+    paare: paarLines,
+    hinweis: ""
+  });
+
+  setStatus(`Import erfolgreich: ${rundenname}`);
+}
+
+async function importiereRundePDF_undSpeichern(f) {
+  await importiereRundePDF(f);
+
+  const ziel = document.getElementById(pid(f, "importZiel")).value;
+
+  const { runde, paare, hinweis } = readFields(f, ziel);
+  if (!runde) return setStatus("Konnte nicht speichern: Kein Rundenname erkannt.");
+
+  const key = runde.replace(/[.#$/\[\]]/g, "-");
+
+  const db = dbOf(f);
+  db.ref("runden/" + key).set({ runde, paare, hinweis })
+    .then(() => {
+      setStatus(`Fläche ${f === "f1" ? "1" : "2"}: Import + Speichern erfolgreich: "${runde}"`);
+      ladeRunden(f);
+      setSelectValue(f, "rundeSelect" + capitalize(ziel), key);
+    })
+    .catch(err => setStatus("Fehler beim automatischen Speichern: " + err.message));
+}
+
+async function importiereMehrereRundenPDF(f) {
+  const fileInput = document.getElementById(pid(f, "importFile"));
+  const ziel = document.getElementById(pid(f, "importZiel")).value;
+
+  if (!fileInput.files.length) {
+    return setStatus("Bitte mindestens eine PDF-Datei auswählen.");
+  }
+
+  setStatus(`Fläche ${f === "f1" ? "1" : "2"}: Importiere mehrere Runden...`);
+
+  for (const file of fileInput.files) {
+    const temp = new DataTransfer();
+    temp.items.add(file);
+    fileInput.files = temp.files;
+
+    await importiereRundePDF(f);
+
+    const { runde, paare, hinweis } = readFields(f, ziel);
+    if (!runde) continue;
+
+    const key = runde.replace(/[.#$/\[\]]/g, "-");
+    await dbOf(f).ref("runden/" + key).set({ runde, paare, hinweis });
+  }
+
+  fileInput.value = "";
+  ladeRunden(f);
+  setStatus(`Fläche ${f === "f1" ? "1" : "2"}: Mehrfach-Import & Speichern abgeschlossen.`);
+}
+
+/* ===========================================================
+   Initiale automatische Datenladungen
+   =========================================================== */
+ladeRunden("f1");
+ladeRunden("f2");
+slideshowLaden();
+titelLaden();
+</script>
+
+</body>
+</html>

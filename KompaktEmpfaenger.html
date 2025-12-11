@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<title>KompaktEmpfänger – Fläche 1 & 2</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<style>
+:root{
+  --color-bg: #6f6f6f;
+  --color-box-bg: #4a4a4a;
+  --color-box-border: rgba(255,255,255,0.12);
+
+  --color-title: #ffffff;
+  --color-clock: #ffffff;
+
+  --color-header: #001EFF;
+  --color-roundname: #ffffff;
+  --color-list: #ffffff;
+  --color-hinweis: #ff8903;
+
+  --color-global-hinweis: #ff8903;
+  --color-footer-bg: rgba(0,0,0,0.22);
+
+  --size-title: 2.6vw;
+  --size-clock: 2.0vw;
+
+  --size-box-header: 1.4vw;
+  --size-roundname: 1.5vw;
+
+  /* Zahlen-Pills: ein Tick kleiner als vorherige Liste */
+  --size-list: 1.7vw;
+
+  --size-hinweis: 2.2vw;
+  --size-global-hinweis: 2.2vw;
+
+  --footer-h: 18vh;
+  --gap: 1.0vw;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-title);
+}
+
+.page { height: 100%; display: grid; grid-template-rows: auto 1fr var(--footer-h); }
+
+/* HEADER */
+.header {
+  display: flex; align-items: center; justify-content: center;
+  position: relative; padding: 1vh 1.5vw 0.5vh;
+}
+#titel {
+  font-size: var(--size-title);
+  font-weight: 800; text-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  max-width: 75vw; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
+  text-align: center; color: var(--color-title);
+}
+.clock {
+  position: absolute; right: 1.5vw;
+  font-size: var(--size-clock);
+  font-weight: 700; color: var(--color-clock);
+}
+
+/* MAIN */
+.main { display: flex; flex-direction: column; padding: 0.6vh 1.2vw; }
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: var(--gap);
+  flex: 1;
+  min-height: 0;
+}
+
+.runde-box {
+  background: var(--color-box-bg);
+  border-radius: 0.8rem; padding: 1.0vh 1.0vw;
+  box-shadow: 0 0 16px rgba(0,0,0,0.35);
+  display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  border: 1px solid var(--color-box-border);
+}
+
+.runde-box h1 {
+  font-weight: 800;
+  margin: 0 0 0.3vh 0;
+  color: var(--color-header);
+  font-size: var(--size-box-header);
+}
+
+.runde-box h2 {
+  margin: 0 0 0.6vh 0;
+  color: var(--color-roundname);
+  font-size: var(--size-roundname);
+  font-weight: 650;
+  opacity: 0.95;
+}
+
+.list-viewport {
+  position: relative; overflow: hidden; flex: 1; min-height: 0;
+  border: 1px solid rgba(255,255,255,0.10); border-radius: 0.5rem;
+}
+.list-track { position: absolute; left: 0; top: 0; width: 100%; }
+
+/* NEU: Startnummern nebeneinander als "Pills" */
+.num-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:0.45em 0.65em;
+  padding:0.75vh 0.8vw;
+  align-content:flex-start;
+}
+.num-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0.22em 0.55em;
+  border-radius:0.6em;
+  border:1px solid rgba(255,255,255,0.18);
+  background:rgba(0,0,0,0.18);
+  color:var(--color-list);
+  font-size:var(--size-list);
+  font-weight:800;
+  line-height:1.0;
+  white-space:nowrap;
+}
+.group-label{
+  flex:0 0 100%;
+  color:var(--color-list);
+  font-size:calc(var(--size-list) * 0.70);
+  font-weight:800;
+  opacity:0.9;
+  margin-top:0.2em;
+}
+
+@keyframes scrollY {
+  from { transform: translateY(0); }
+  to { transform: translateY(calc(-1 * var(--scroll-distance, 0px))); }
+}
+
+.hinweis {
+  color: var(--color-hinweis);
+  font-size: var(--size-hinweis);
+  margin: 0.3vh 0 0 0;
+  font-weight: 750;
+}
+
+/* FOOTER */
+.footer {
+  display: grid; grid-template-columns: 9vw 1fr 9vw;
+  padding: 0.5vh 1.2vw; gap: var(--gap); align-items: center;
+  background: var(--color-footer-bg);
+}
+
+.media-slot { position: relative; height: calc(var(--footer-h) - 1vh);
+  border-radius: 0rem; overflow: hidden;
+  border: 0px solid rgba(255,255,255,0.12);
+}
+
+.slides img { position: absolute; inset: 0; margin: auto;
+  max-height: 100%; max-width: 100%; opacity: 0; transition: opacity .6s; }
+.slides img.active { opacity: 1; }
+
+#globalHinweis {
+  text-align: center;
+  font-weight: 800;
+  color: var(--color-global-hinweis);
+  font-size: var(--size-global-hinweis);
+  overflow: hidden;
+  white-space: normal;
+  line-height: 1.15;
+}
+
+.logo-wrap img { max-height: 100%; max-width: 100%; display: none; }
+</style>
+</head>
+
+<body>
+<div class="page">
+
+<header class="header">
+  <div id="titel">Turnier</div>
+  <div class="clock" id="clock">--:--</div>
+</header>
+
+<main class="main">
+  <div class="grid">
+    <!-- Fläche 1 -->
+    <div class="runde-box">
+      <h1>Fläche 1 – Laufende Runde</h1>
+      <h2 id="f1_rundeAktuell">–</h2>
+      <div class="list-viewport"><div class="list-track" id="f1_trackAktuell"></div></div>
+      <p class="hinweis" id="f1_hinweisAktuell"></p>
+    </div>
+
+    <div class="runde-box">
+      <h1>Fläche 2 – Laufende Runde</h1>
+      <h2 id="f2_rundeAktuell">–</h2>
+      <div class="list-viewport"><div class="list-track" id="f2_trackAktuell"></div></div>
+      <p class="hinweis" id="f2_hinweisAktuell"></p>
+    </div>
+
+    <div class="runde-box">
+      <h1>Fläche 1 – Nächste Runde</h1>
+      <h2 id="f1_rundeNaechste">–</h2>
+      <div class="list-viewport"><div class="list-track" id="f1_trackNaechste"></div></div>
+      <p class="hinweis" id="f1_hinweisNaechste"></p>
+    </div>
+
+    <div class="runde-box">
+      <h1>Fläche 2 – Nächste Runde</h1>
+      <h2 id="f2_rundeNaechste">–</h2>
+      <div class="list-viewport"><div class="list-track" id="f2_trackNaechste"></div></div>
+      <p class="hinweis" id="f2_hinweisNaechste"></p>
+    </div>
+
+    <div class="runde-box">
+      <h1>Fläche 1 – Übernächste Runde</h1>
+      <h2 id="f1_rundeUebernaechste">–</h2>
+      <div class="list-viewport"><div class="list-track" id="f1_trackUebernaechste"></div></div>
+      <p class="hinweis" id="f1_hinweisUebernaechste"></p>
+    </div>
+
+    <div class="runde-box">
+      <h1>Fläche 2 – Übernächste Runde</h1>
+      <h2 id="f2_rundeUebernaechste">–</h2>
+      <div class="list-viewport"><div class="list-track" id="f2_trackUebernaechste"></div></div>
+      <p class="hinweis" id="f2_hinweisUebernaechste"></p>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="media-slot"><div class="slides" id="slides"></div></div>
+  <div id="globalHinweis"></div>
+  <div class="logo-wrap"><img id="logoImg" alt="Logo"></div>
+</footer>
+
+</div>
+
+<script>
+/* ===========================================================
+   Firebase (2 Apps: Fläche 1 + Fläche 2)
+   =========================================================== */
+firebase.initializeApp({ databaseURL: "https://testseite-turnier-default-rtdb.europe-west1.firebasedatabase.app" }, "f1");
+firebase.initializeApp({ databaseURL: "https://turnier-anzeige-datenbank-2-default-rtdb.europe-west1.firebasedatabase.app" }, "f2");
+
+const db1 = firebase.app("f1").database();
+const db2 = firebase.app("f2").database();
+
+/* ===========================================================
+   Uhr
+   =========================================================== */
+setInterval(()=>{document.getElementById("clock").innerText=new Date().toTimeString().slice(0,5)},1000);
+
+/* ===========================================================
+   Hilfsfunktionen
+   =========================================================== */
+function onlyStartnummern(arr){
+  if(!Array.isArray(arr)) return [];
+  return arr.map(line=>String(line ?? "").trim()).filter(Boolean).map(line=>{
+    if(/^\d+\.\s*Gruppe\s*:/i.test(line)) return line;
+    const nums = line.match(/\b\d+\b/g);
+    if(nums && nums.length) return nums.join(" ");
+    return line;
+  });
+}
+
+function applyAutoScroll(trackId, arr){
+  const track=document.getElementById(trackId);
+
+  // Alles in EINEM flex-wrap Grid, damit die Startnummern wirklich nebeneinander stehen
+  const renderInner = () => {
+    const parts = [];
+
+    for(const raw of (arr||[])){
+      const line = String(raw ?? "").trim();
+      if(!line) continue;
+
+      // Gruppenzeile: "1. Gruppe: 12 34 56"
+      if(/^\d+\.\s*Gruppe\s*:/i.test(line)){
+        const seg = line.split(":");
+        const label = (seg.shift() || "").trim() + ":";
+        const rest = seg.join(":").trim();
+        const nums = rest ? rest.split(/\s+/).filter(Boolean) : [];
+
+        parts.push(`<div class="group-label">${label}</div>`);
+        nums.forEach(n => parts.push(`<span class="num-pill">${n}</span>`));
+        continue;
+      }
+
+      // normale Zeile (z.B. "12" oder "12 34")
+      line.split(/\s+/).filter(Boolean).forEach(n => {
+        parts.push(`<span class="num-pill">${n}</span>`);
+      });
+    }
+
+    return `<div class="num-grid">${parts.join("")}</div>`;
+  };
+
+  const one = `<div class="scroll-block">${renderInner()}</div>`;
+  track.innerHTML = one + one;
+
+  requestAnimationFrame(()=>{
+    const viewport = track.parentElement;
+    const firstBlock = track.querySelector(".scroll-block");
+    if(!firstBlock) return;
+
+    const h = firstBlock.scrollHeight;
+    const v = viewport.clientHeight;
+
+    track.style.animation="none";
+    track.style.transform="translateY(0)";
+
+    // Wenn es passt: NICHT scrollen
+    if(h <= v){
+      track.innerHTML = one;
+      return;
+    }
+
+    // Sonst: sanftes Auto-Scroll wie vorher
+    track.style.setProperty("--scroll-distance", h + "px");
+    track.style.animation = `scrollY ${Math.max(14, h/28)}s linear infinite`;
+  });
+}
+
+/* ===========================================================
+   Titel (kombiniert)
+   =========================================================== */
+let title1 = "", title2 = "";
+function updateTitel(){
+  const t1 = (title1||"").trim();
+  const t2 = (title2||"").trim();
+  const out = (t1 && t2)
+    ? (t1 === t2 ? t1 : `${t1}  |  ${t2}`)
+    : (t1 || t2 || "Turnier");
+  document.getElementById("titel").innerText = out;
+}
+db1.ref("titel").on("value",s=>{title1 = s.val()?.text || ""; updateTitel();});
+db2.ref("titel").on("value",s=>{title2 = s.val()?.text || ""; updateTitel();});
+
+/* ===========================================================
+   Globaler Hinweis (kombiniert)
+   =========================================================== */
+let hint1="", hint2="";
+function updateGlobalHinweis(){
+  const h1=(hint1||"").trim();
+  const h2=(hint2||"").trim();
+  let out="";
+  if(h1 && h2){
+    out = (h1===h2) ? h1 : `Fläche 1: ${h1}\nFläche 2: ${h2}`;
+  } else {
+    out = h1 || h2 || "";
+  }
+  document.getElementById("globalHinweis").innerText = out;
+}
+db1.ref("hinweis").on("value",s=>{hint1 = s.val()?.text || ""; updateGlobalHinweis();});
+db2.ref("hinweis").on("value",s=>{hint2 = s.val()?.text || ""; updateGlobalHinweis();});
+
+/* ===========================================================
+   Runden live (6 Felder)
+   =========================================================== */
+function bindRound(db, prefix, typ){
+  const suffixMap = {
+    aktuell: "Aktuell",
+    naechste: "Naechste",
+    uebernaechste: "Uebernaechste"
+  };
+  const suf = suffixMap[typ] || "Naechste";
+
+  db.ref("anzeige/" + typ).on("value", s=>{
+    const d = s.val() || {};
+    const rId = `${prefix}_runde${suf}`;
+    const tId = `${prefix}_track${suf}`;
+    const hId = `${prefix}_hinweis${suf}`;
+
+    document.getElementById(rId).innerText = d.runde || "–";
+    applyAutoScroll(tId, onlyStartnummern(d.paare || []));
+    document.getElementById(hId).innerText = d.hinweis || "";
+  });
+}
+
+bindRound(db1, "f1", "aktuell");
+bindRound(db1, "f1", "naechste");
+bindRound(db2, "f2", "aktuell");
+bindRound(db2, "f2", "naechste");
+bindRound(db1, "f1", "uebernaechste");
+bindRound(db2, "f2", "uebernaechste");
+
+/* ===========================================================
+   Logo Auto-Load
+   =========================================================== */
+(function(){
+  const img=document.getElementById("logoImg");
+  ["logo.png","logo.jpg","logo.webp"].forEach(src=>{
+    const t=new Image();
+    t.onload=()=>{img.src=src;img.style.display="block";}
+    t.src=src;
+  });
+})();
+
+/* ===========================================================
+   Slideshow (wie bisher, Intervall aus DB – bevorzugt Fläche 1)
+   =========================================================== */
+let slideIdx=0, slideTimer, slideIntervalMs=10000;
+const bases=Array.from({length:50},(_,i)=>`slide${i+1}`);
+const exts=["jpg","jpeg","png","webp","gif","JPG","PNG","JPEG","WEBP","GIF"];
+
+function loadSlides(){
+  const box=document.getElementById("slides");
+  box.innerHTML="";
+  bases.forEach(base=>exts.forEach(ext=>{
+    const img=new Image();
+    img.onload=()=>{box.appendChild(img);startSlides();};
+    img.src=`${base}.${ext}`;
+  }));
+}
+
+function startSlides(){
+  const slides=[...document.querySelectorAll("#slides img")];
+  if(!slides.length)return;
+  slides.forEach(s=>s.classList.remove("active"));
+  slideIdx=0; slides[0].classList.add("active");
+  if(slideTimer)clearInterval(slideTimer);
+  if(slides.length<=1)return;
+  slideTimer=setInterval(()=>{
+    slides[slideIdx].classList.remove("active");
+    slideIdx=(slideIdx+1)%slides.length;
+    slides[slideIdx].classList.add("active");
+  },slideIntervalMs);
+}
+
+let interval1 = null, interval2 = null;
+function updateInterval(){
+  const ms = interval1 || interval2 || 10000;
+  slideIntervalMs = ms;
+  startSlides();
+}
+db1.ref("slideshow/intervalMs").on("value",s=>{interval1 = s.val() || null; updateInterval();});
+db2.ref("slideshow/intervalMs").on("value",s=>{interval2 = s.val() || null; updateInterval();});
+
+loadSlides();
+</script>
+</body>
+</html>
